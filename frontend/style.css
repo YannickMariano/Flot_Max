@@ -7,31 +7,150 @@
 html, body {
   height: 100%;
   width: 100%;
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+}
+
+#header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 5px 0;
+  z-index: 100;
 }
 
 #cy {
   height: 100vh;
   width: 100vw;
   display: block;
+  background-color: #f8f8f8;
 }
 
 #controls {
   position: absolute;
-  top: 20px;
+  top: 40px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 255, 0.95);
   padding: 10px 20px;
   border-radius: 8px;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
   z-index: 999;
   display: flex;
-  gap: 10px;
+  gap: 15px;
   align-items: center;
 }
 
-input, button {
-  padding: 6px 10px;
+button {
+  padding: 8px 15px;
   font-size: 14px;
+  background-color: #0074D9;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #0063b1;
+}
+
+#reset-btn {
+  background-color: #FF851B;
+}
+
+#reset-btn:hover {
+  background-color: #e06c00;
+}
+
+#new-graph-btn {
+  background-color: #2ECC40;
+}
+
+#new-graph-btn:hover {
+  background-color: #27ae60;
+}
+
+#legend {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 15px;
+  border-radius: 8px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  z-index: 999;
+}
+
+.legend-header {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 3px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+  font-size: 12px;
+}
+
+.color-box {
+  width: 15px;
+  height: 15px;
+  margin-right: 8px;
+  border-radius: 3px;
+}
+
+.color-box.source {
+  background-color: #3D9970;
+}
+
+.color-box.sink {
+  background-color: #FF4136;
+}
+
+.color-box.critical {
+  background-color: #FFDC00;
+  border: 2px solid #FF851B;
+}
+
+.color-box.flow-node {
+  background-color: #2ECC40;
+}
+
+.color-box.max-path {
+  background-color: #FF851B;
+  height: 6px;
+}
+
+.color-box.saturated {
+  background-color: #FF4136;
+  height: 5px;
+}
+
+.color-box.bottleneck {
+  background-color: #9400D3;
+  height: 3px;
+  border-top: 1px dashed #fff;
+  border-bottom: 1px dashed #fff;
+}
+
+/* Tooltip styles */
+.tooltip {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
 }

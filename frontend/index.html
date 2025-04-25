@@ -6,12 +6,117 @@
   <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
 </head>
 <body>
-  <div id="controls">
-    <!-- <input type="text" id="source" placeholder="Source node ID">
-    <input type="text" id="sink" placeholder="Sink node ID"> -->
-    <button onclick="calculateMaxFlow()">Calculate Max Flow</button>
+  <div id="header">
+    <h1>Maximum Flow Visualizer - Ford-Fulkerson</h1>
   </div>
+  
+  <div id="controls">
+    <button id="calculate-btn" onclick="calculateMaxFlow()">Calculate Max Flow</button>
+    <button id="reset-btn" onclick="resetGraph()">Reset Graph</button>
+    <button id="new-graph-btn" onclick="loadNewGraph()">New Graph</button>
+  </div>
+  
+  <div id="legend">
+    <div class="legend-header">Legend:</div>
+    <div class="legend-item"><span class="color-box source"></span> Source Node</div>
+    <div class="legend-item"><span class="color-box sink"></span> Sink Node</div>
+    <div class="legend-item"><span class="color-box critical"></span> Critical Node</div>
+    <div class="legend-item"><span class="color-box flow-node"></span> Flow Node</div>
+    <div class="legend-item"><span class="color-box max-path"></span> Max Flow Path</div>
+    <div class="legend-item"><span class="color-box saturated"></span> Saturated Edge</div>
+    <div class="legend-item"><span class="color-box bottleneck"></span> Blocked/Unused Edge</div>
+  </div>
+  
   <div id="cy"></div>
+  
   <script src="app.js"></script>
+  <script>
+    function resetGraph() {
+      cy.nodes().removeClass('flow-node source sink max-path-node critical-node');
+      cy.edges().removeClass('maxflow-path saturated flow-edge bottleneck');
+      cy.edges().forEach(e => e.removeData('label'));
+    }
+    
+    function loadNewGraph() {
+      const graphType = prompt("Choose graph type (1: Simple, 2: Complex, 3: Random):", "1");
+      resetGraph();
+      cy.elements().remove();
+      
+      switch(graphType) {
+        case "1": // Simple graph
+          cy.add([
+            { data: { id: 'S' } },
+            { data: { id: 'A' } },
+            { data: { id: 'B' } },
+            { data: { id: 'T' } },
+            { data: { source: 'S', target: 'A', capacity: '10' } },
+            { data: { source: 'S', target: 'B', capacity: '5' } },
+            { data: { source: 'A', target: 'B', capacity: '2' } },
+            { data: { source: 'A', target: 'T', capacity: '8' } },
+            { data: { source: 'B', target: 'T', capacity: '7' } }
+          ]);
+          break;
+        case "2": // Complex graph with bottlenecks
+          cy.add([
+            { data: { id: 'S' } },
+            { data: { id: 'A' } },
+            { data: { id: 'B' } },
+            { data: { id: 'C' } },
+            { data: { id: 'D' } },
+            { data: { id: 'E' } },
+            { data: { id: 'T' } },
+            { data: { source: 'S', target: 'A', capacity: '10' } },
+            { data: { source: 'S', target: 'C', capacity: '8' } },
+            { data: { source: 'A', target: 'B', capacity: '5' } },
+            { data: { source: 'A', target: 'C', capacity: '2' } },
+            { data: { source: 'B', target: 'D', capacity: '4' } },
+            { data: { source: 'B', target: 'T', capacity: '3' } },
+            { data: { source: 'C', target: 'D', capacity: '5' } },
+            { data: { source: 'C', target: 'E', capacity: '4' } },
+            { data: { source: 'D', target: 'E', capacity: '2' } },
+            { data: { source: 'D', target: 'T', capacity: '6' } },
+            { data: { source: 'E', target: 'T', capacity: '8' } },
+            // Add some edges that will be "blocked"
+            { data: { source: 'A', target: 'E', capacity: '4' } }
+          ]);
+          break;
+        case "3": // Random graph
+          const nodeCount = 6;
+          const edgeProbability = 0.4;
+          
+          // Add nodes
+          cy.add({ data: { id: 'S' } });
+          for (let i = 1; i < nodeCount-1; i++) {
+            cy.add({ data: { id: String.fromCharCode(64 + i) } });
+          }
+          cy.add({ data: { id: 'T' } });
+          
+          // Add random edges
+          const nodes = cy.nodes().map(n => n.id());
+          
+          for (let i = 0; i < nodes.length; i++) {
+            for (let j = i+1; j < nodes.length; j++) {
+              if (Math.random() < edgeProbability) {
+                const capacity = Math.floor(Math.random() * 15) + 1;
+                cy.add({ data: { 
+                  source: nodes[i], 
+                  target: nodes[j],
+                  capacity: capacity.toString()
+                }});
+              }
+            }
+          }
+          break;
+      }
+      
+      cy.layout({
+        name: 'breadthfirst',
+        directed: true,
+        padding: 30
+      }).run();
+      
+      cy.fit();
+    }
+  </script>
 </body>
 </html>
