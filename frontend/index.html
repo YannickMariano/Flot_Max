@@ -11,6 +11,12 @@
   </div>
   
   <div id="controls">
+    <div class="node-selection">
+      <span>Source:</span>
+      <select id="source-select" class="node-select"></select>
+      <span>Sink:</span>
+      <select id="sink-select" class="node-select"></select>
+    </div>
     <button id="calculate-btn" onclick="calculateMaxFlow()">Calculate Max Flow</button>
     <button id="reset-btn" onclick="resetGraph()">Reset Graph</button>
     <button id="new-graph-btn" onclick="loadNewGraph()">New Graph</button>
@@ -35,6 +41,7 @@
       cy.nodes().removeClass('flow-node source sink max-path-node critical-node');
       cy.edges().removeClass('maxflow-path saturated flow-edge bottleneck');
       cy.edges().forEach(e => e.removeData('label'));
+      updateNodeSelects(); // Update the dropdowns after reset
     }
     
     function loadNewGraph() {
@@ -116,7 +123,48 @@
       }).run();
       
       cy.fit();
+      updateNodeSelects(); // Update dropdowns after creating a new graph
     }
+    
+    // Function to update the source/sink dropdown options
+    function updateNodeSelects() {
+      const sourceSelect = document.getElementById('source-select');
+      const sinkSelect = document.getElementById('sink-select');
+      
+      // Clear previous options
+      sourceSelect.innerHTML = '';
+      sinkSelect.innerHTML = '';
+      
+      // Get all node IDs
+      const nodes = cy.nodes().map(n => n.id());
+      
+      // Create options for each node
+      nodes.forEach(nodeId => {
+        const sourceOption = document.createElement('option');
+        sourceOption.value = nodeId;
+        sourceOption.textContent = nodeId;
+        
+        const sinkOption = document.createElement('option');
+        sinkOption.value = nodeId;
+        sinkOption.textContent = nodeId;
+        
+        sourceSelect.appendChild(sourceOption);
+        sinkSelect.appendChild(sinkOption);
+      });
+      
+      // Set default values (try to find S and T, or use first and last nodes)
+      const defaultSource = nodes.includes('S') ? 'S' : nodes[0];
+      const defaultSink = nodes.includes('T') ? 'T' : nodes[nodes.length - 1];
+      
+      sourceSelect.value = defaultSource;
+      sinkSelect.value = defaultSink;
+    }
+    
+    // Initialize the dropdowns when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      // Wait a moment for the graph to be rendered
+      setTimeout(updateNodeSelects, 500);
+    });
   </script>
 </body>
 </html>

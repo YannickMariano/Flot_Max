@@ -134,27 +134,26 @@ function calculateMaxFlow() {
   const nodes = elements.filter(e => e.group === 'nodes');
   const edges = elements.filter(e => e.group === 'edges');
   
-  // Find source and sink
-  const allNodeIds = nodes.map(n => n.data.id);
-  const incoming = new Set(edges.map(e => e.data.target));
-  const outgoing = new Set(edges.map(e => e.data.source));
+  // Get source and sink from the dropdown selects
+  const sourceSelect = document.getElementById('source-select');
+  const sinkSelect = document.getElementById('sink-select');
   
-  let source = allNodeIds.find(id => !incoming.has(id));
-  let sink = allNodeIds.find(id => !outgoing.has(id));
+  const source = sourceSelect.value;
+  const sink = sinkSelect.value;
   
-  // If automatic detection fails, let the user select source and sink
-  if (!source || !sink) {
-    source = prompt("Enter source node ID:", allNodeIds[0]);
-    if (!source || !allNodeIds.includes(source)) {
-      alert("Invalid source node");
-      return;
-    }
-    
-    sink = prompt("Enter sink node ID:", allNodeIds[allNodeIds.length-1]);
-    if (!sink || !allNodeIds.includes(sink)) {
-      alert("Invalid sink node");
-      return;
-    }
+  // Validate selection
+  if (source === sink) {
+    alert("Source and sink cannot be the same node");
+    return;
+  }
+  
+  // Check if source and sink exist in the graph
+  const sourceNode = cy.getElementById(source);
+  const sinkNode = cy.getElementById(sink);
+  
+  if (sourceNode.length === 0 || sinkNode.length === 0) {
+    alert("Selected source or sink node doesn't exist in the graph");
+    return;
   }
   
   // Reset styles
@@ -162,8 +161,8 @@ function calculateMaxFlow() {
   cy.edges().removeClass('maxflow-path saturated flow-edge bottleneck');
   
   // Mark source and sink
-  cy.getElementById(source).addClass('source');
-  cy.getElementById(sink).addClass('sink');
+  sourceNode.addClass('source');
+  sinkNode.addClass('sink');
   
   const loadingMsg = document.createElement('div');
   loadingMsg.textContent = 'Calculating max flow...';
@@ -303,6 +302,7 @@ document.addEventListener('keydown', function(event) {
     if (id && id.trim() !== '') {
       cy.add({ data: { id: id.trim() } });
       cy.layout({ name: 'breadthfirst', directed: true }).run();
+      updateNodeSelects(); // Update dropdowns when adding a new node
     }
   }
 });
@@ -334,3 +334,51 @@ infoPanel.innerHTML = `
   </div>
 `;
 document.body.appendChild(infoPanel);
+
+// Function to update the source/sink dropdown options
+function updateNodeSelects() {
+  const sourceSelect = document.getElementById('source-select');
+  const sinkSelect = document.getElementById('sink-select');
+  
+  if (!sourceSelect || !sinkSelect) return; // Exit if elements don't exist yet
+  
+  // Save current selections if they exist
+  const currentSource = sourceSelect.value;
+  const currentSink = sinkSelect.value;
+  
+  // Clear previous options
+  sourceSelect.innerHTML = '';
+  sinkSelect.innerHTML = '';
+  
+  // Get all node IDs
+  const nodes = cy.nodes().map(n => n.id());
+  
+  // Create options for each node
+  nodes.forEach(nodeId => {
+    const sourceOption = document.createElement('option');
+    sourceOption.value = nodeId;
+    sourceOption.textContent = nodeId;
+    
+    const sinkOption = document.createElement('option');
+    sinkOption.value = nodeId;
+    sinkOption.textContent = nodeId;
+    
+    sourceSelect.appendChild(sourceOption);
+    sinkSelect.appendChild(sinkOption);
+  });
+  
+  // Restore previous selections if valid, otherwise set defaults
+  if (nodes.includes(currentSource)) {
+    sourceSelect.value = currentSource;
+  } else {
+    const defaultSource = nodes.includes('S') ? 'S' : nodes[0];
+    sourceSelect.value = defaultSource;
+  }
+  
+  if (nodes.includes(currentSink)) {
+    sinkSelect.value = currentSink;
+  } else {
+    const defaultSink = nodes.includes('T') ? 'T' : nodes[nodes.length - 1];
+    sinkSelect.value = defaultSink;
+  }
+}
