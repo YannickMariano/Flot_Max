@@ -111,8 +111,6 @@ function fordFulkerson(nodes, edges, sourceId, sinkId) {
                     }
                 }
                 
-                // Identify bottleneck edges - those that have zero flow but positive capacity
-                // These are edges that could potentially carry flow but can't due to bottlenecks elsewhere
                 if (flow[u][v] === 0 && capacity[u][v] > 0) {
                     bottleneckEdges.push({
                         from: indexToId[u],
