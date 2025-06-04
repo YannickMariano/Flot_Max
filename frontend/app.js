@@ -105,6 +105,82 @@ const cy = cytoscape({
   }
 });
 
+let nodeCount = 0;
+let edgeCount = 0;
+let selectedNode = null;
+
+function cleanGraph() {
+  cy.elements().remove();
+  nodeCount = 0;
+  edgeCount = 0;
+  selectedNode = null;
+  alert("You can now click to add nodes and edges.");
+}
+function numberToLetters(num) {
+  let letters = '';
+  do {
+    letters = String.fromCharCode(65 + (num % 26)) + letters;
+    num = Math.floor(num / 26) - 1;
+  } while (num >= 0);
+  return letters;
+}
+
+function handleBackgroundClick(event) {
+  if (event.target === cy) {
+    function numberToLetters(num) {
+      let letters = '';
+      do {
+        letters = String.fromCharCode(65 + (num % 26)) + letters;
+        num = Math.floor(num / 26) - 1;
+      } while (num >= 0);
+      return letters;
+    }
+
+    const id = numberToLetters(nodeCount++);
+    cy.add({
+      group: "nodes",
+      data: { id: id, label: id },
+      position: event.position
+    });
+    updateNodeSelects?.(); // Optional, if defined
+  }
+}
+
+
+function handleNodeClick(event) {
+  if (selectedNode === null) {
+    selectedNode = event.target;
+    selectedNode.style("background-color", "yellow");
+  } else {
+    const source = selectedNode.id();
+    const target = event.target.id();
+
+    if (source !== target) {
+      const edgeId = `e${edgeCount++}`;
+      cy.add({
+        group: "edges",
+        data: {
+          id: edgeId,
+          source: source,
+          target: target,
+          capacity: 10,
+          label: "10"
+        }
+      });
+    }
+
+    selectedNode.style("background-color", "green");
+    selectedNode = null;
+  }
+}
+
+// Attach to button
+document.getElementById("create-new-graph-btn").addEventListener("click", cleanGraph);
+
+// Attach to Cytoscape events
+cy.on("tap", (event) => handleBackgroundClick(event));
+cy.on("tap", "node", (event) => handleNodeClick(event));
+
 // Sample graph
 cy.add([
   { data: { id: 'A' } },
