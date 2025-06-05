@@ -493,21 +493,25 @@ function loadNewGraph() {
         { data: { id: 'C' } },
         { data: { id: 'D' } },
         { data: { id: 'E' } },
-        { data: { id: 'T' } },
-        { data: { source: 'S', target: 'A', capacity: '10' } },
-        { data: { source: 'S', target: 'C', capacity: '8' } },
-        { data: { source: 'A', target: 'B', capacity: '5' } },
-        { data: { source: 'A', target: 'C', capacity: '2' } },
-        { data: { source: 'B', target: 'D', capacity: '4' } },
-        { data: { source: 'B', target: 'T', capacity: '3' } },
-        { data: { source: 'C', target: 'D', capacity: '5' } },
-        { data: { source: 'C', target: 'E', capacity: '4' } },
-        { data: { source: 'D', target: 'E', capacity: '2' } },
-        { data: { source: 'D', target: 'T', capacity: '6' } },
-        { data: { source: 'E', target: 'T', capacity: '8' } },
-        // Add some edges that will be "blocked"
-        { data: { source: 'A', target: 'E', capacity: '4' } }
-      ]);
+	{ data: { id: 'F' } },
+        { data: { id: 'G' } },
+	{ data: { id: 'T' } },
+        { data: { source: 'S', target: 'A', capacity: '45' } },
+        { data: { source: 'S', target: 'B', capacity: '25' } },
+        { data: { source: 'S', target: 'C', capacity: '30' } },
+        { data: { source: 'A', target: 'D', capacity: '10' } },
+        { data: { source: 'A', target: 'E', capacity: '15' } },
+        { data: { source: 'A', target: 'G', capacity: '20' } },
+        { data: { source: 'B', target: 'D', capacity: '20' } },
+        { data: { source: 'B', target: 'E', capacity: '5' } },
+        { data: { source: 'B', target: 'F', capacity: '15' } },
+        { data: { source: 'C', target: 'F', capacity: '10' } },
+        { data: { source: 'C', target: 'G', capacity: '15' } },
+	{ data: { source: 'D', target: 'T', capacity: '30' } },
+	{ data: { source: 'E', target: 'T', capacity: '10' } },
+	{ data: { source: 'F', target: 'T', capacity: '20' } },
+        { data: { source: 'G', target: 'T', capacity: '40' } }
+]);
       break;
     case "3": // Random graph
       const nodeCount = 6;
