@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   addEdge,
   Background,
@@ -11,45 +11,41 @@ import ReactFlow, {
   ReactFlowInstance,
   useEdgesState,
   useNodesState,
+  MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import ControlsPanel from './ControlsPanel';
+
+const nodeTypes = {
+  custom: CustomNode,
+};
+
+function CustomNode({ data }: { data: { label: string } }) {
+  return (
+    <div className="rounded-full w-16 h-16 flex items-center justify-center bg-blue-500 text-white border-2 border-white shadow-lg">
+      {data.label}
+    </div>
+  );
+}
 
 export default function FlowDiagram() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([
-    {
-      id: '1',
-      type: 'input',
-      data: { label: 'Source' },
-      position: { x: 250, y: 0 },
-    },
-    {
-      id: '2',
-      data: { label: 'Node 2' },
-      position: { x: 100, y: 100 },
-    },
-    {
-      id: '3',
-      data: { label: 'Node 3' },
-      position: { x: 400, y: 100 },
-    },
-    {
-      id: '4',
-      type: 'output',
-      data: { label: 'Sink' },
-      position: { x: 250, y: 200 },
-    },
-  ]);
-
-  const [edges, setEdges, onEdgesChange] = useEdgesState([
-    { id: 'e1-2', source: '1', target: '2', label: '10', data: { capacity: 10 } },
-    { id: 'e1-3', source: '1', target: '3', label: '5', data: { capacity: 5 } },
-    { id: 'e2-4', source: '2', target: '4', label: '15', data: { capacity: 15 } },
-    { id: 'e3-4', source: '3', target: '4', label: '5', data: { capacity: 5 } },
-  ]);
-
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
-  const [nextId, setNextId] = useState(5);
-  const [maxFlow, setMaxFlow] = useState<number | null>(null);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [isSelectingSource, setIsSelectingSource] = useState(false);
+  const [isSelectingSink, setIsSelectingSink] = useState(false);
+  const [capacityInput, setCapacityInput] = useState('');
+  const [edgeToUpdate, setEdgeToUpdate] = useState<string | null>(null);
+  const [nodeIdCounter, setNodeIdCounter] = useState(1);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (edgeToUpdate && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [edgeToUpdate]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -58,41 +54,101 @@ export default function FlowDiagram() {
         id: `e${params.source}-${params.target}`,
         label: '0',
         data: { capacity: 0 },
+        markerEnd: { type: MarkerType.ArrowClosed },
       };
       setEdges((eds) => addEdge(newEdge, eds));
     },
     [setEdges]
   );
 
-  const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node.id);
+    setSelectedEdge(null);
+
+    if (isSelectingSource) {
+      setNodes((nds) =>
+        nds.map((n) => ({
+          ...n,
+          type: n.id === node.id ? 'input' : n.type === 'input' ? 'custom' : n.type,
+        }))
+      );
+      setIsSelectingSource(false);
+    } else if (isSelectingSink) {
+      setNodes((nds) =>
+        nds.map((n) => ({
+          ...n,
+          type: n.id === node.id ? 'output' : n.type === 'output' ? 'custom' : n.type,
+        }))
+      );
+      setIsSelectingSink(false);
+    }
+  }, [isSelectingSource, isSelectingSink, setNodes]);
+
+  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    setSelectedEdge(edge.id);
+    setSelectedNode(null);
+    setEdgeToUpdate(edge.id);
+    setCapacityInput(edge.data?.capacity?.toString() || '0');
   }, []);
 
-  const onDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
+  const addNewNode = useCallback(() => {
+    const newNodeId = `node-${nodeIdCounter}`;
+    const newNode = {
+      id: newNodeId,
+      type: 'custom',
+      data: { label: `N${nodeIdCounter}` },
+      position: { 
+        x: Math.random() * 500, 
+        y: Math.random() * 500 
+      },
+    };
 
-      if (!reactFlowInstance) return;
+    setNodes((nds) => nds.concat(newNode));
+    setNodeIdCounter(nodeIdCounter + 1);
+  }, [nodeIdCounter, setNodes]);
 
-      const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
-      const newNode = {
-        id: `${nextId}`,
-        type: 'default',
-        position,
-        data: { label: `Node ${nextId}` },
-      };
+  const removeSelectedNode = useCallback(() => {
+    if (!selectedNode) return;
 
-      setNodes((nds) => nds.concat(newNode));
-      setNextId(nextId + 1);
-    },
-    [reactFlowInstance, nextId, setNodes]
-  );
+    setNodes((nds) => nds.filter((n) => n.id !== selectedNode));
+    setEdges((eds) =>
+      eds.filter((e) => e.source !== selectedNode && e.target !== selectedNode)
+    );
+    setSelectedNode(null);
+  }, [selectedNode, setNodes, setEdges]);
+
+  const updateEdgeCapacity = useCallback(() => {
+    if (!edgeToUpdate || !capacityInput) return;
+
+    const newCapacity = parseInt(capacityInput);
+    if (isNaN(newCapacity)) return;
+
+    setEdges((eds) =>
+      eds.map((edge) => {
+        if (edge.id === edgeToUpdate) {
+          return {
+            ...edge,
+            label: newCapacity.toString(),
+            data: { capacity: newCapacity },
+          };
+        }
+        return edge;
+      })
+    );
+
+    setEdgeToUpdate(null);
+    setCapacityInput('');
+  }, [edgeToUpdate, capacityInput, setEdges]);
 
   const calculateMaxFlow = async () => {
+    const sourceNode = nodes.find((n) => n.type === 'input');
+    const sinkNode = nodes.find((n) => n.type === 'output');
+
+    if (!sourceNode || !sinkNode) {
+      alert('Veuillez sélectionner une source et un puits');
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:5000/api/calculate-max-flow', {
         method: 'POST',
@@ -100,7 +156,8 @@ export default function FlowDiagram() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          nodes: nodes.map((node) => node.id),
+          source: sourceNode.id,
+          sink: sinkNode.id,
           edges: edges.map((edge) => ({
             source: edge.source,
             target: edge.target,
@@ -110,51 +167,67 @@ export default function FlowDiagram() {
       });
 
       const data = await response.json();
-      setMaxFlow(data.maxFlow);
+      alert(`Flot maximum: ${data.maxFlow}`);
     } catch (error) {
       console.error('Error calculating max flow:', error);
     }
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
-        <button
-          onClick={calculateMaxFlow}
-          className="bg-green-500 text-white px-4 py-2 rounded mr-2"
-        >
-          Calculer Flot Max
-        </button>
-        {maxFlow !== null && (
-          <div className="mt-2 p-2 bg-gray-100 rounded">
-            <strong>Flot Maximum:</strong> {maxFlow}
-          </div>
-        )}
-      </div>
+    <div className="relative" style={{ width: '100vw', height: '100vh' }}>
+      <ControlsPanel
+        addNewNode={addNewNode}
+        removeSelectedNode={removeSelectedNode}
+        setIsSelectingSource={setIsSelectingSource}
+        setIsSelectingSink={setIsSelectingSink}
+        calculateMaxFlow={calculateMaxFlow}
+        selectedNode={selectedNode}
+      />
+
+      {edgeToUpdate && (
+        <div className="absolute top-20 left-4 z-10 bg-white p-4 rounded shadow-lg">
+          <h3 className="font-bold mb-2">Modifier capacité</h3>
+          <input
+            ref={inputRef}
+            type="number"
+            value={capacityInput}
+            onChange={(e) => setCapacityInput(e.target.value)}
+            className="border p-2 mr-2"
+          />
+          <button
+            onClick={updateEdgeCapacity}
+            className="bg-blue-500 text-white px-3 py-1 rounded"
+          >
+            Valider
+          </button>
+          <button
+            onClick={() => setEdgeToUpdate(null)}
+            className="bg-gray-500 text-white px-3 py-1 rounded ml-2"
+          >
+            Annuler
+          </button>
+        </div>
+      )}
 
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onInit={setReactFlowInstance}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
+        onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
         fitView
+        style={{
+          width: '100%',
+          height: '100%',
+        }}
       >
         <Background />
         <Controls />
       </ReactFlow>
-
-      <div className="absolute top-2 right-2 z-10 bg-gray-100 p-2 rounded">
-        <h3 className="font-bold">Instructions</h3>
-        <ul className="list-disc pl-4">
-          <li>Glissez pour déplacer les nœuds</li>
-          <li>Cliquez sur un nœud et faites glisser pour créer une connexion</li>
-          <li>Double-cliquez sur une arête pour modifier sa capacité</li>
-        </ul>
-      </div>
     </div>
   );
 }
