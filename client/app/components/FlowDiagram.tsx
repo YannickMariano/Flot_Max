@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import ReactFlow, {
   addEdge,
   Background,
@@ -8,226 +8,303 @@ import ReactFlow, {
   Connection,
   Edge,
   Node,
-  ReactFlowInstance,
-  useEdgesState,
   useNodesState,
+  useEdgesState,
   MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import ControlsPanel from './ControlsPanel';
 
-const nodeTypes = {
-  custom: CustomNode,
-};
+const CircleNode = ({ data, selected }: { data: { label: string }, selected?: boolean }) => (
+  <div style={{
+    width: '50px',
+    height: '50px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: data.label === 'S' ? '#10B981' : 
+                    data.label === 'T' ? '#EF4444' : 'white',
+    border: `3px solid ${selected ? '#F59E0B' : 
+            data.label === 'S' ? '#047857' : 
+            data.label === 'T' ? '#B91C1C' : '#3B82F6'}`,
+    color: data.label === 'S' || data.label === 'T' ? 'white' : '#3B82F6',
+    fontWeight: 'bold',
+    fontSize: '20px',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+    transition: 'all 0.2s ease'
+  }}>
+    {data.label}
+  </div>
+);
 
-function CustomNode({ data }: { data: { label: string } }) {
-  return (
-    <div className="rounded-full w-16 h-16 flex items-center justify-center bg-blue-500 text-white border-2 border-white shadow-lg">
-      {data.label}
-    </div>
-  );
-}
+const nodeTypes = { circleNode: CircleNode };
 
 export default function FlowDiagram() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const [nextChar, setNextChar] = useState('A'.charCodeAt(0));
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
-  const [isSelectingSource, setIsSelectingSource] = useState(false);
-  const [isSelectingSink, setIsSelectingSink] = useState(false);
-  const [capacityInput, setCapacityInput] = useState('');
-  const [edgeToUpdate, setEdgeToUpdate] = useState<string | null>(null);
-  const [nodeIdCounter, setNodeIdCounter] = useState(1);
+  const [edgeValue, setEdgeValue] = useState('10');
+  const [actionMode, setActionMode] = useState<'select' | 'source' | 'sink' | 'connect'>('select');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (edgeToUpdate && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [edgeToUpdate]);
+  // Ajouter un nouveau nœud
+  const addNewNode = useCallback(() => {
+    const label = String.fromCharCode(nextChar);
+    const newNode = {
+      id: label,
+      type: 'circleNode',
+      position: { 
+        x: Math.random() * 500 + 100, 
+        y: Math.random() * 300 + 100 
+      },
+      data: { label }
+    };
+    
+    setNodes((nds) => nds.concat(newNode));
+    setNextChar(nextChar + 1);
+  }, [nextChar]);
 
+  // Supprimer un nœud
+  const removeNode = useCallback(() => {
+    if (!selectedNode) return;
+    
+    setNodes((nds) => nds.filter((n) => n.id !== selectedNode));
+    setEdges((eds) => eds.filter((e) => 
+      e.source !== selectedNode && e.target !== selectedNode
+    ));
+    setSelectedNode(null);
+  }, [selectedNode]);
+
+  // Définir comme source
+  const setAsSource = useCallback(() => {
+    if (!selectedNode) return;
+    
+    setNodes((nds) => nds.map((n) => ({
+      ...n,
+      data: {
+        ...n.data,
+        label: n.id === selectedNode ? 'S' : n.data.label === 'S' ? String.fromCharCode(65 + parseInt(n.id)) : n.data.label
+      }
+    })));
+    setActionMode('select');
+  }, [selectedNode]);
+
+  // Définir comme puits
+  const setAsSink = useCallback(() => {
+    if (!selectedNode) return;
+    
+    setNodes((nds) => nds.map((n) => ({
+      ...n,
+      data: {
+        ...n.data,
+        label: n.id === selectedNode ? 'T' : n.data.label === 'T' ? String.fromCharCode(65 + parseInt(n.id)) : n.data.label
+      }
+    })));
+    setActionMode('select');
+  }, [selectedNode]);
+
+  // Créer une connexion
   const onConnect = useCallback(
     (params: Connection) => {
       const newEdge = {
         ...params,
-        id: `e${params.source}-${params.target}`,
-        label: '0',
-        data: { capacity: 0 },
+        id: `${params.source}-${params.target}`,
+        label: edgeValue,
         markerEnd: { type: MarkerType.ArrowClosed },
+        type: 'smoothstep',
+        animated: false
       };
       setEdges((eds) => addEdge(newEdge, eds));
+      setEdgeValue('10');
+      setActionMode('select');
     },
-    [setEdges]
+    [edgeValue]
   );
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    setSelectedNode(node.id);
+  // Mettre à jour la valeur d'une liaison
+  const updateEdgeValue = useCallback(() => {
+    if (!selectedEdge) return;
+    
+    setEdges((eds) =>
+      eds.map((edge) =>
+        edge.id === selectedEdge
+          ? { ...edge, label: edgeValue }
+          : edge
+      )
+    );
     setSelectedEdge(null);
+  }, [selectedEdge, edgeValue]);
 
-    if (isSelectingSource) {
-      setNodes((nds) =>
-        nds.map((n) => ({
-          ...n,
-          type: n.id === node.id ? 'input' : n.type === 'input' ? 'custom' : n.type,
-        }))
-      );
-      setIsSelectingSource(false);
-    } else if (isSelectingSink) {
-      setNodes((nds) =>
-        nds.map((n) => ({
-          ...n,
-          type: n.id === node.id ? 'output' : n.type === 'output' ? 'custom' : n.type,
-        }))
-      );
-      setIsSelectingSink(false);
+  // Gestion du clic sur nœud
+  const onNodeClick = useCallback((_, node: Node) => {
+    setSelectedNode(node.id);
+    
+    if (actionMode === 'source') {
+      setAsSource();
+    } else if (actionMode === 'sink') {
+      setAsSink();
     }
-  }, [isSelectingSource, isSelectingSink, setNodes]);
-
-  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
-    setSelectedEdge(edge.id);
-    setSelectedNode(null);
-    setEdgeToUpdate(edge.id);
-    setCapacityInput(edge.data?.capacity?.toString() || '0');
-  }, []);
-
-  const addNewNode = useCallback(() => {
-    const newNodeId = `node-${nodeIdCounter}`;
-    const newNode = {
-      id: newNodeId,
-      type: 'custom',
-      data: { label: `N${nodeIdCounter}` },
-      position: { 
-        x: Math.random() * 500, 
-        y: Math.random() * 500 
-      },
-    };
-
-    setNodes((nds) => nds.concat(newNode));
-    setNodeIdCounter(nodeIdCounter + 1);
-  }, [nodeIdCounter, setNodes]);
-
-  const removeSelectedNode = useCallback(() => {
-    if (!selectedNode) return;
-
-    setNodes((nds) => nds.filter((n) => n.id !== selectedNode));
-    setEdges((eds) =>
-      eds.filter((e) => e.source !== selectedNode && e.target !== selectedNode)
-    );
-    setSelectedNode(null);
-  }, [selectedNode, setNodes, setEdges]);
-
-  const updateEdgeCapacity = useCallback(() => {
-    if (!edgeToUpdate || !capacityInput) return;
-
-    const newCapacity = parseInt(capacityInput);
-    if (isNaN(newCapacity)) return;
-
-    setEdges((eds) =>
-      eds.map((edge) => {
-        if (edge.id === edgeToUpdate) {
-          return {
-            ...edge,
-            label: newCapacity.toString(),
-            data: { capacity: newCapacity },
-          };
-        }
-        return edge;
-      })
-    );
-
-    setEdgeToUpdate(null);
-    setCapacityInput('');
-  }, [edgeToUpdate, capacityInput, setEdges]);
-
-  const calculateMaxFlow = async () => {
-    const sourceNode = nodes.find((n) => n.type === 'input');
-    const sinkNode = nodes.find((n) => n.type === 'output');
-
-    if (!sourceNode || !sinkNode) {
-      alert('Veuillez sélectionner une source et un puits');
-      return;
-    }
-
-    try {
-      const response = await fetch('http://localhost:5000/api/calculate-max-flow', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          source: sourceNode.id,
-          sink: sinkNode.id,
-          edges: edges.map((edge) => ({
-            source: edge.source,
-            target: edge.target,
-            capacity: edge.data?.capacity || 0,
-          })),
-        }),
-      });
-
-      const data = await response.json();
-      alert(`Flot maximum: ${data.maxFlow}`);
-    } catch (error) {
-      console.error('Error calculating max flow:', error);
-    }
-  };
+  }, [actionMode, setAsSource, setAsSink]);
 
   return (
-    <div className="relative" style={{ width: '100vw', height: '100vh' }}>
-      <ControlsPanel
-        addNewNode={addNewNode}
-        removeSelectedNode={removeSelectedNode}
-        setIsSelectingSource={setIsSelectingSource}
-        setIsSelectingSink={setIsSelectingSink}
-        calculateMaxFlow={calculateMaxFlow}
-        selectedNode={selectedNode}
-      />
+    <div style={{ width: '100vw', height: '100vh' }}>
+      {/* Panneau de contrôle */}
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        zIndex: 10,
+        background: 'white',
+        padding: '15px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        minWidth: '200px'
+      }}>
+        <h2 style={{ margin: '0 0 10px 0', color: '#333' }}>Contrôles</h2>
+        
+        <button style={buttonStyle} onClick={addNewNode}>
+          Ajouter Noeud
+        </button>
+        
+        <button 
+          style={{
+            ...buttonStyle,
+            ...(!selectedNode && disabledButtonStyle)
+          }}
+          onClick={removeNode}
+          disabled={!selectedNode}
+        >
+          Supprimer Noeud
+        </button>
 
-      {edgeToUpdate && (
-        <div className="absolute top-20 left-4 z-10 bg-white p-4 rounded shadow-lg">
-          <h3 className="font-bold mb-2">Modifier capacité</h3>
-          <input
-            ref={inputRef}
-            type="number"
-            value={capacityInput}
-            onChange={(e) => setCapacityInput(e.target.value)}
-            className="border p-2 mr-2"
-          />
-          <button
-            onClick={updateEdgeCapacity}
-            className="bg-blue-500 text-white px-3 py-1 rounded"
+        <div style={{ margin: '10px 0', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+          <button 
+            style={{
+              ...buttonStyle,
+              background: actionMode === 'source' ? '#F59E0B' : '#10B981'
+            }}
+            onClick={() => setActionMode('source')}
           >
-            Valider
+            Définir Source (S)
           </button>
-          <button
-            onClick={() => setEdgeToUpdate(null)}
-            className="bg-gray-500 text-white px-3 py-1 rounded ml-2"
+          
+          <button 
+            style={{
+              ...buttonStyle,
+              background: actionMode === 'sink' ? '#F59E0B' : '#EF4444',
+              marginTop: '8px'
+            }}
+            onClick={() => setActionMode('sink')}
           >
-            Annuler
+            Définir Puits (T)
           </button>
         </div>
-      )}
 
+        <button 
+          style={{
+            ...buttonStyle,
+            background: actionMode === 'connect' ? '#F59E0B' : '#3B82F6'
+          }}
+          onClick={() => setActionMode('connect')}
+        >
+          Mode Connexion
+        </button>
+
+        {selectedEdge && (
+          <div style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+            <h3 style={{ fontSize: '14px', marginBottom: '5px' }}>Capacité:</h3>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <input
+                ref={inputRef}
+                type="number"
+                value={edgeValue}
+                onChange={(e) => setEdgeValue(e.target.value)}
+                style={{ 
+                  flex: 1, 
+                  padding: '8px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+              />
+              <button 
+                style={{
+                  ...buttonStyle,
+                  padding: '8px 12px',
+                  background: '#10B981'
+                }}
+                onClick={updateEdgeValue}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* React Flow */}
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onInit={setReactFlowInstance}
+        onConnect={actionMode === 'connect' ? onConnect : undefined}
         onNodeClick={onNodeClick}
-        onEdgeClick={onEdgeClick}
-        fitView
-        style={{
-          width: '100%',
-          height: '100%',
+        onEdgeClick={(_, edge) => {
+          setSelectedEdge(edge.id);
+          setEdgeValue(edge.label || '10');
+          inputRef.current?.focus();
         }}
+        nodeTypes={nodeTypes}
+        connectionMode="strict"
+        fitView
       >
         <Background />
         <Controls />
       </ReactFlow>
+
+      {/* Indicateur de mode */}
+      {actionMode !== 'select' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#F59E0B',
+          color: 'white',
+          padding: '8px 15px',
+          borderRadius: '20px',
+          zIndex: 10,
+          boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+        }}>
+          {actionMode === 'source' && 'Mode Source - Cliquez sur un nœud'}
+          {actionMode === 'sink' && 'Mode Puits - Cliquez sur un nœud'}
+          {actionMode === 'connect' && 'Mode Connexion - Reliez deux nœuds'}
+        </div>
+      )}
     </div>
   );
 }
+
+const buttonStyle = {
+  padding: '10px',
+  background: '#3B82F6',
+  color: 'white',
+  border: 'none',
+  borderRadius: '6px',
+  cursor: 'pointer',
+  fontSize: '14px',
+  fontWeight: '500',
+  width: '100%',
+  transition: 'all 0.2s ease'
+};
+
+const disabledButtonStyle = {
+  background: '#E5E7EB',
+  color: '#9CA3AF',
+  cursor: 'not-allowed'
+};

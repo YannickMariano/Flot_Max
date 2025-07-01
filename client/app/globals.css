@@ -40,3 +40,20 @@ a {
     color-scheme: dark;
   }
 }
+
+.react-flow__node-custom {
+  transition: all 0.2s ease;
+}
+
+.react-flow__node-custom.selected {
+  box-shadow: 0 0 0 2px #f6e05e;
+}
+
+.react-flow__edge path {
+  stroke-width: 2;
+}
+
+.react-flow__edge-text {
+  font-size: 12px;
+  font-weight: bold;
+}

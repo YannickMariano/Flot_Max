@@ -1,63 +1,43 @@
 "use client";
 
-import { FaPlus, FaTrash, FaPlay, FaArrowRight, FaArrowDown } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaProjectDiagram } from 'react-icons/fa';
 
 export default function ControlsPanel({
   addNewNode,
-  removeSelectedNode,
-  setIsSelectingSource,
-  setIsSelectingSink,
-  calculateMaxFlow,
   selectedNode,
+  removeNode,
 }: {
   addNewNode: () => void;
-  removeSelectedNode: () => void;
-  setIsSelectingSource: (value: boolean) => void;
-  setIsSelectingSink: (value: boolean) => void;
-  calculateMaxFlow: () => void;
   selectedNode: string | null;
+  removeNode?: () => void;
 }) {
   return (
-    <div className="absolute top-4 left-4 z-10 bg-white p-4 rounded shadow-lg">
-      <div className="flex flex-col space-y-3">
+    <div className="absolute top-4 left-4 z-10 bg-white/90 p-4 rounded-lg shadow-md border">
+      <div className="flex items-center mb-3 text-blue-600">
+        <FaProjectDiagram className="mr-2" />
+        <h2 className="font-bold">Contrôles</h2>
+      </div>
+      
+      <div className="space-y-2">
         <button
           onClick={addNewNode}
-          className="flex items-center bg-green-500 text-white px-3 py-2 rounded"
+          className="flex items-center bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded w-full"
         >
-          <FaPlus className="mr-2" /> Ajouter Noeud
+          <FaPlus className="mr-2" />
+          Ajouter Noeud
         </button>
-
+        
         <button
-          onClick={removeSelectedNode}
+          onClick={removeNode}
           disabled={!selectedNode}
-          className={`flex items-center px-3 py-2 rounded ${
-            selectedNode ? 'bg-red-500 text-white' : 'bg-gray-300 text-gray-500'
+          className={`flex items-center px-3 py-2 rounded w-full ${
+            selectedNode 
+              ? 'bg-red-500 hover:bg-red-600 text-white' 
+              : 'bg-gray-200 text-gray-400'
           }`}
         >
-          <FaTrash className="mr-2" /> Supprimer Noeud
-        </button>
-
-        <div className="border-t pt-3">
-          <button
-            onClick={() => setIsSelectingSource(true)}
-            className="flex items-center bg-blue-500 text-white px-3 py-2 rounded mb-2"
-          >
-            <FaArrowRight className="mr-2" /> Définir Source
-          </button>
-
-          <button
-            onClick={() => setIsSelectingSink(true)}
-            className="flex items-center bg-purple-500 text-white px-3 py-2 rounded"
-          >
-            <FaArrowDown className="mr-2" /> Définir Puits
-          </button>
-        </div>
-
-        <button
-          onClick={calculateMaxFlow}
-          className="flex items-center bg-orange-500 text-white px-3 py-2 rounded mt-4"
-        >
-          <FaPlay className="mr-2" /> Calculer Flot Max
+          <FaTrash className="mr-2" />
+          Supprimer Noeud
         </button>
       </div>
     </div>
