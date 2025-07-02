@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagramme de cercles connectés</title>
+    <link rel="stylesheet" href="Static/css/style_schema.css">
+</head>
+<body>
+    <h1>Diagramme interactif</h1>
+    <div class="container" id="container">
+        <svg class="arrows-layer" width="100%" height="100%">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" />
+                </marker>
+            </defs>
+        </svg>
+    </div>
+    <div class="controls">
+        <button id="addCircle">Ajouter un cercle</button>
+        <button id="removeCircle">Supprimer un cercle</button>
+        <button id="connectCircles">Connecter les cercles</button>
+        <button id="disconnectCircles">Déconnecter les cercles</button>
+        <button id="clearAll">Tout effacer</button>
+        <button id="save">Sauvegarder</button>
+        <button id="load">Charger</button>
+    </div>
+
+    <script src="Static/js/schema.js"></script>
+</body>
+</html>
