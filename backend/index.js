@@ -180,7 +180,288 @@ function findAugmentingPath(source, sink, capacity, flow, n) {
     return null;
 }
 
-// API Endpoint
+/**
+ * Construit le graphe { source: { cible: capacité } }
+ */
+function buildGraph(elements) {
+    const graph = {};
+    elements.forEach(el => {
+        if (el.data.source && el.data.target) {
+            const { source, target, capacity } = el.data;
+            if (!graph[source]) graph[source] = {};
+            graph[source][target] = parseInt(capacity);
+            if (!graph[target]) graph[target] = {};
+        } else if (el.data.id) {
+            const { id } = el.data;
+            if (!graph[id]) graph[id] = {};
+        }
+    });
+    return graph;
+}
+
+/**
+ * BFS simple
+ */
+function bfs(residual, source, sink, parent) {
+    const visited = new Set();
+    const queue = [source];
+    visited.add(source);
+    parent[source] = null;
+
+    while (queue.length > 0) {
+        const u = queue.shift();
+        for (const v in residual[u]) {
+            if (!visited.has(v) && residual[u][v] > 0) {
+                parent[v] = u;
+                if (v === sink) return true;
+                visited.add(v);
+                queue.push(v);
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * Flot complet (1 passage par chemin), puis Ford-Fulkerson
+ */
+function computeFlows(graph, source, sink) {
+    const residual = {};
+    const flow = {};
+
+    for (const u in graph) {
+        residual[u] = {};
+        flow[u] = {};
+        for (const v in graph[u]) {
+            residual[u][v] = graph[u][v];
+            residual[v] = residual[v] || {};
+            residual[v][u] = 0;
+            flow[u][v] = 0;
+        }
+    }
+
+    const parent = {};
+    let maxFlow = 0;
+
+    // Étape 1 : Flot Complet
+    while (bfs(residual, source, sink, parent)) {
+        let pathFlow = Infinity;
+        let v = sink;
+        while (v !== source) {
+            const u = parent[v];
+            pathFlow = Math.min(pathFlow, residual[u][v]);
+            v = u;
+        }
+
+        v = sink;
+        while (v !== source) {
+            const u = parent[v];
+            flow[u][v] += pathFlow;
+            flow[v][u] -= pathFlow;
+            residual[u][v] -= pathFlow;
+            residual[v][u] += pathFlow;
+            v = u;
+        }
+
+        maxFlow += pathFlow;
+    }
+
+    // Sauvegarde du graphe après flot complet
+    const flowComplet = JSON.parse(JSON.stringify(flow));
+
+    // Étape 2 : continuer jusqu'au flot maximal
+    while (bfs(residual, source, sink, parent)) {
+        let pathFlow = Infinity;
+        let v = sink;
+        while (v !== source) {
+            const u = parent[v];
+            pathFlow = Math.min(pathFlow, residual[u][v]);
+            v = u;
+        }
+
+        v = sink;
+        while (v !== source) {
+            const u = parent[v];
+            flow[u][v] += pathFlow;
+            flow[v][u] -= pathFlow;
+            residual[u][v] -= pathFlow;
+            residual[v][u] += pathFlow;
+            v = u;
+        }
+
+        maxFlow += pathFlow;
+    }
+
+    return { flowComplet, flowMax: flow };
+}
+
+/**
+ * Convertit un graphe de flots en liste Cytoscape.js
+ */
+function graphToCytoscape(flow, baseGraph) {
+    const nodeSet = new Set();
+    const elements = [];
+
+    // Collect all nodes
+    for (const u in baseGraph) {
+        nodeSet.add(u);
+        for (const v in baseGraph[u]) {
+            nodeSet.add(v);
+        }
+    }
+
+    // Add node elements first
+    for (const nodeId of nodeSet) {
+        elements.push({ data: { id: nodeId } });
+    }
+
+    // Add edge elements
+    for (const u in flow) {
+        for (const v in flow[u]) {
+            if (flow[u][v] > 0) {
+                elements.push({
+                    data: {
+                        source: u,
+                        target: v,
+                        capacity: flow[u][v].toString()
+                    }
+                });
+            }
+        }
+    }
+
+    return elements;
+}
+
+
+// New function to compute max flow as Cytoscape elements
+function computeMaxFlowAsCytoscapeElements(elements, source, sink) {
+    const graph = {};
+    elements.forEach(el => {
+        if (el.data.source && el.data.target) {
+            const { source, target, capacity } = el.data;
+            if (!graph[source]) graph[source] = {};
+            graph[source][target] = parseInt(capacity);
+            if (!graph[target]) graph[target] = {};
+        } else {
+            const { id } = el.data;
+            if (!graph[id]) graph[id] = {};
+        }
+    });
+
+    // Implement the max flow logic using the BFS function here
+    const residual = {};
+    const flow = {};
+    for (const u in graph) {
+        residual[u] = {};
+        flow[u] = {};
+        for (const v in graph[u]) {
+            residual[u][v] = graph[u][v];
+            residual[v] = residual[v] || {};
+            residual[v][u] = 0;
+            flow[u][v] = 0;
+        }
+    }
+
+    let maxFlow = 0;
+    const parent = {};
+
+    while (bfs(residual, source, sink, parent)) {
+        let pathFlow = Infinity;
+        let v = sink;
+        while (v !== source) {
+            const u = parent[v];
+            pathFlow = Math.min(pathFlow, residual[u][v]);
+            v = u;
+        }
+
+        v = sink;
+        while (v !== source) {
+            const u = parent[v];
+            flow[u][v] += pathFlow;
+            flow[v][u] = (flow[v][u] || 0) - pathFlow;
+            residual[u][v] -= pathFlow;
+            residual[v][u] += pathFlow;
+            v = u;
+        }
+
+        maxFlow += pathFlow;
+    }
+
+    const responseElements = [];
+    for (const u in graph) {
+        for (const v in graph[u]) {
+            responseElements.push({
+                data: {
+                    source: u,
+                    target: v,
+                    capacity: flow[u][v] || 0
+                }
+            });
+        }
+    }
+
+    return responseElements;
+}
+
+/**
+ * Applique uniquement la première phase "flot complet"
+ * (1 chemin augmentant à la fois, sans optimisation maximale)
+ */
+function computeFlowComplet(graph, source, sink) {
+    const residual = {};
+    const flow = {};
+    for (const u in graph) {
+        residual[u] = {};
+        flow[u] = {};
+        for (const v in graph[u]) {
+            residual[u][v] = graph[u][v];
+            residual[v] = residual[v] || {};
+            residual[v][u] = 0;
+            flow[u][v] = 0;
+        }
+    }
+    const parent = {};
+    // Exécute le BFS tant qu'un chemin existe (1 fois par chemin possible)
+    while (bfs(residual, source, sink, parent)) {
+        let pathFlow = Infinity;
+        let v = sink;
+        while (v !== source) {
+            const u = parent[v];
+            pathFlow = Math.min(pathFlow, residual[u][v]);
+            v = u;
+        }
+        // Appliquer le flot
+        v = sink;
+        while (v !== source) {
+            const u = parent[v];
+            flow[u][v] += pathFlow;
+            flow[v][u] -= pathFlow;
+            residual[u][v] -= pathFlow;
+            residual[v][u] += pathFlow;
+            v = u;
+        }
+    }
+    return flow;
+}
+
+/**
+ * Nettoyer le flot pour ne garder que les arcs positifs
+ */
+function cleanFlow(flow) {
+    const cleaned = {};
+    for (const u in flow) {
+        for (const v in flow[u]) {
+            if (flow[u][v] > 0) {
+                if (!cleaned[u]) cleaned[u] = {};
+                cleaned[u][v] = flow[u][v];
+            }
+        }
+    }
+    return cleaned;
+}
+
+// API Endpoint for max flow calculation
 app.post('/maxflow', (req, res) => {
     const { nodes, edges, source, sink } = req.body;
     
@@ -189,8 +470,28 @@ app.post('/maxflow', (req, res) => {
     }
     
     try {
+        // Calcul du flot avec la méthode optimisée
         const result = fordFulkerson(nodes, edges, source, sink);
-        res.json(result);
+        
+        // Calcul du flot complet et du flot maximal avec la méthode du premier code
+        const combined = [...nodes, ...edges];
+        const graph = buildGraph(combined);
+        const { flowComplet, flowMax } = computeFlows(graph, source, sink);
+        
+        // Conversion en éléments Cytoscape
+        const graphComplet = graphToCytoscape(flowComplet, graph);
+        const graphMax = graphToCytoscape(flowMax, graph);
+        
+        // Compute the otherGraph using the same nodes and edges
+        const otherGraph = computeMaxFlowAsCytoscapeElements([...nodes, ...edges], source, sink);
+        
+        // Include all results in the response
+        res.json({ 
+            ...result, 
+            otherGraph,
+            graphComplet,
+            graphMax
+        });
     } catch (err) {
         res.status(500).json({ error: 'Calculation error', details: err.message });
     }

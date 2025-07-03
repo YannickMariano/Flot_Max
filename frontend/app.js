@@ -1,11 +1,11 @@
 const cy = cytoscape({
-  container: document.getElementById('cy'),
+  container: document.getElementById('cy-original'),
   elements: [],
   style: [
     {
       selector: 'node',
       style: {
-        'background-color': '#0074D9',
+        'background-color': '#0074D9', // Default node color
         'label': 'data(id)',
         'color': '#fff',
         'text-valign': 'center',
@@ -34,8 +34,8 @@ const cy = cytoscape({
     {
       selector: '.maxflow-path',
       style: {
-        'line-color': '#FF851B',
-        'target-arrow-color': '#FF851B',
+        'line-color': '#FF5733', // Bright red for max flow path
+        'target-arrow-color': '#FF5733',
         'width': 6,
         'z-index': 10
       }
@@ -60,13 +60,13 @@ const cy = cytoscape({
     {
       selector: '.flow-node',
       style: {
-        'background-color': '#2ECC40'
+        'background-color': '#2ECC40' // Green for flow nodes
       }
     },
     {
       selector: '.max-path-node',
       style: {
-        'background-color': '#FF851B',
+        'background-color': '#FF851B', 
         'border-width': 3,
         'border-color': '#FF4136'
       }
@@ -74,9 +74,8 @@ const cy = cytoscape({
     {
       selector: '.critical-node',
       style: {
-        'background-color': '#FFDC00',  // Yellow for critical nodes
+        'background-color': '#FF851B', 
         'border-width': 4,
-        'border-color': '#FF851B',
         'width': 65,
         'height': 65
       }
@@ -84,7 +83,7 @@ const cy = cytoscape({
     {
       selector: '.source',
       style: {
-        'background-color': '#3D9970',
+        'background-color': '#3D9970', 
         'width': 60,
         'height': 60
       }
@@ -92,9 +91,131 @@ const cy = cytoscape({
     {
       selector: '.sink',
       style: {
-        'background-color': '#FF4136',
+        'background-color': '#FF4136', 
         'width': 60,
         'height': 60
+      }
+    }, {
+      selector: '.blocked', 
+      style: {
+        'line-color': '#9400D3',  
+        'target-arrow-color': '#9400D3',
+        'line-style': 'dashed',
+        'opacity': 0.7
+      }
+    }
+  ],
+  layout: {
+    name: 'breadthfirst',
+    directed: true,
+    padding: 30
+  }
+});
+
+const cyFinalGraph = cytoscape({
+  container: document.getElementById('cy-modified'),
+  elements: [],
+  style: [
+    {
+      selector: 'node',
+      style: {
+        'background-color': '#0074D9', // Default node color
+        'label': 'data(id)',
+        'color': '#fff',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'width': 50,
+        'height': 50
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        'width': 3,
+        'line-color': '#aaa',
+        'target-arrow-color': '#aaa',
+        'target-arrow-shape': 'triangle',
+        'curve-style': 'bezier',
+        'label': 'data(capacity)'
+      }
+    },
+    {
+      selector: '.flow-edge',
+      style: {
+        'label': 'data(label)'
+      }
+    },
+    {
+      selector: '.maxflow-path',
+      style: {
+        'line-color': '#FF5733', // Bright red for max flow path
+        'target-arrow-color': '#FF5733',
+        'width': 6,
+        'z-index': 10
+      }
+    },
+    {
+      selector: '.saturated',
+      style: {
+        'line-color': '#FF4136',
+        'target-arrow-color': '#FF4136',
+        'width': 5
+      }
+    },
+    {
+      selector: '.bottleneck',
+      style: {
+        'line-color': '#9400D3',  // Purple color for bottleneck edges
+        'target-arrow-color': '#9400D3',
+        'line-style': 'dashed',
+        'opacity': 0.7
+      }
+    },
+    {
+      selector: '.flow-node',
+      style: {
+        'background-color': '#2ECC40' // Green for flow nodes
+      }
+    },
+    {
+      selector: '.max-path-node',
+      style: {
+        'background-color': '#FF851B', 
+        'border-width': 3,
+        'border-color': '#FF4136'
+      }
+    },
+    {
+      selector: '.critical-node',
+      style: {
+        'background-color': '#FF851B', 
+        'border-width': 4,
+        'width': 65,
+        'height': 65
+      }
+    },
+    {
+      selector: '.source',
+      style: {
+        'background-color': '#3D9970', 
+        'width': 60,
+        'height': 60
+      }
+    },
+    {
+      selector: '.sink',
+      style: {
+        'background-color': '#FF4136', 
+        'width': 60,
+        'height': 60
+      }
+    }, {
+      selector: '.blocked', 
+      style: {
+        'line-color': '#9400D3',  
+        'target-arrow-color': '#9400D3',
+        'line-style': 'dashed',
+        'opacity': 0.7
       }
     }
   ],
@@ -108,85 +229,6 @@ const cy = cytoscape({
 let nodeCount = 0;
 let edgeCount = 0;
 let selectedNode = null;
-
-function cleanGraph() {
-  cy.elements().remove();
-  nodeCount = 0;
-  edgeCount = 0;
-  selectedNode = null;
-  alert("You can now click to add nodes and edges.");
-}
-
-function deleteNode() {
-  if (selectedNode) {
-    cy.remove(selectedNode);
-    selectedNode = null;
-    updateNodeSelects();
-  } else {
-    alert("Choisissez d'abord un noeud à supprimer en cliquant dessus");
-  }
-}
-
-function numberToLetters(num) {
-  let letters = '';
-  do {
-    letters = String.fromCharCode(65 + (num % 26)) + letters;
-    num = Math.floor(num / 26) - 1;
-  } while (num >= 0);
-  return letters;
-}
-
-function handleBackgroundClick(event) {
-  if (event.target === cy) {
-    function numberToLetters(num) {
-      let letters = '';
-      do {
-        letters = String.fromCharCode(65 + (num % 26)) + letters;
-        num = Math.floor(num / 26) - 1;
-      } while (num >= 0);
-      return letters;
-    }
-
-    const id = numberToLetters(nodeCount++);
-    cy.add({
-      group: "nodes",
-      data: { id: id, label: id },
-      position: event.position
-    });
-    updateNodeSelects?.(); // Optional, if defined
-  }
-}
-
-
-function handleNodeClick(event) {
-  if (selectedNode === null) {
-    selectedNode = event.target;
-    selectedNode.style("background-color", "yellow");
-  } else {
-    const source = selectedNode.id();
-    const target = event.target.id();
-
-    if (source !== target) {
-      const edgeId = `e${edgeCount++}`;
-      cy.add({
-        group: "edges",
-        data: {
-          id: edgeId,
-          source: source,
-          target: target,
-          capacity: 10,
-          label: "10"
-        }
-      });
-    }
-
-    selectedNode.style("background-color", "green");
-    selectedNode = null;
-  }
-}
-
-// Attach to button
-document.getElementById("create-new-graph-btn").addEventListener("click", cleanGraph);
 
 // Attach to Cytoscape events
 cy.on("tap", (event) => handleBackgroundClick(event));
@@ -215,6 +257,8 @@ cy.layout({
 }).run();
 
 cy.fit();
+
+
 
 function calculateMaxFlow() {
   const elements = cy.elements().jsons();
@@ -278,6 +322,8 @@ function calculateMaxFlow() {
     .then(data => {
       document.body.removeChild(loadingMsg);
       
+      
+      
       // Create a more detailed result box
       const resultBox = document.createElement('div');
       resultBox.innerHTML = `
@@ -310,6 +356,11 @@ function calculateMaxFlow() {
           const capacity = e.data('capacity');
           e.data('label', `${edge.flow}/${capacity}`);
           e.addClass('flow-edge');
+          
+          // Check if the edge is blocked/unused
+          if (edge.flow < capacity) {
+            e.addClass('blocked'); // Add the blocked class
+          }
         });
       });
       
@@ -363,64 +414,17 @@ function calculateMaxFlow() {
           cy.getElementById(nodeId).addClass('flow-node');
         }
       });
+
+      console.log(data.otherGraph);
+      
+    loadOtherGraph(data);
     })
     .catch(err => {
-      document.body.removeChild(loadingMsg);
+     // document.body.removeChild(loadingMsg);
       alert("Error: " + err.message);
       console.error(err);
     });
 }
-
-// Add ability to adjust edge capacity
-cy.on('cxttap', 'edge', function(evt) {
-  const edge = evt.target;
-  const currentCapacity = edge.data('capacity');
-  const newCapacity = prompt(`Update capacity (current: ${currentCapacity}):`, currentCapacity);
-  
-  if (newCapacity !== null && !isNaN(parseInt(newCapacity)) && parseInt(newCapacity) >= 0) {
-    edge.data('capacity', newCapacity);
-  }
-});
-
-// Add ability to add new nodes
-document.addEventListener('keydown', function(event) {
-  if (event.key === 'n' && event.ctrlKey) {
-    const id = prompt("Enter new node ID:");
-    if (id && id.trim() !== '') {
-      cy.add({ data: { id: id.trim() } });
-      cy.layout({ name: 'breadthfirst', directed: true }).run();
-      updateNodeSelects(); // Update dropdowns when adding a new node
-    }
-  }
-});
-
-// Add ability to add new edges
-document.addEventListener('keydown', function(event) {
-  if (event.key === 'e' && event.ctrlKey) {
-    const source = prompt("Enter source node ID:");
-    const target = prompt("Enter target node ID:");
-    const capacity = prompt("Enter edge capacity:");
-    
-    if (source && target && capacity && 
-        !isNaN(parseInt(capacity)) && 
-        cy.getElementById(source).length > 0 && 
-        cy.getElementById(target).length > 0) {
-      cy.add({ data: { source, target, capacity } });
-    }
-  }
-});
-
-// Add UI info
-const infoPanel = document.createElement('div');
-infoPanel.innerHTML = `
-  <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 5px;">
-    <b>Controls:</b><br>
-    • Ctrl+N: Add node<br>
-    • Ctrl+E: Add edge<br>
-    • Right-click edge: Change capacity
-  </div>
-`;
-document.body.appendChild(infoPanel);
 
 // Function to update the source/sink dropdown options
 function updateNodeSelects() {
@@ -470,6 +474,17 @@ function updateNodeSelects() {
   }
 }
 
+// Initialize the dropdowns when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Wait a moment for the graph to be rendered
+  setTimeout(updateNodeSelects, 500);
+});
+
+
+
+
+
+//-----------------------------------------------Function to handle the manipulation and helping the UI/UX-------------------------
 function resetGraph() {
   cy.nodes().removeClass('flow-node source sink max-path-node critical-node');
   cy.edges().removeClass('maxflow-path saturated flow-edge bottleneck');
@@ -598,6 +613,8 @@ function loadNewGraph() {
   updateNodeSelects(); // Update dropdowns after creating a new graph
 }
 
+
+
 // Function to update the source/sink dropdown options
 function updateNodeSelects() {
   const sourceSelect = document.getElementById('source-select');
@@ -632,8 +649,182 @@ function updateNodeSelects() {
   sinkSelect.value = defaultSink;
 }
 
-// Initialize the dropdowns when the page loads
-document.addEventListener('DOMContentLoaded', function() {
-  // Wait a moment for the graph to be rendered
-  setTimeout(updateNodeSelects, 500);
+
+// ################################################ GRAPH MANIPULATION ################################
+
+// Attach to button
+document.getElementById("create-new-graph-btn").addEventListener("click", cleanGraph);
+
+
+// Add ability to adjust edge capacity
+cy.on('cxttap', 'edge', function(evt) {
+  const edge = evt.target;
+  const currentCapacity = edge.data('capacity');
+  const newCapacity = prompt(`Update capacity (current: ${currentCapacity}):`, currentCapacity);
+  
+  if (newCapacity !== null && !isNaN(parseInt(newCapacity)) && parseInt(newCapacity) >= 0) {
+    edge.data('capacity', newCapacity);
+  }
 });
+
+// Add ability to add new nodes
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'n' && event.ctrlKey) {
+    const id = prompt("Enter new node ID:");
+    if (id && id.trim() !== '') {
+      cy.add({ data: { id: id.trim() } });
+      cy.layout({ name: 'breadthfirst', directed: true }).run();
+      updateNodeSelects(); // Update dropdowns when adding a new node
+    }
+  }
+});
+
+// Add ability to add new edges
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'e' && event.ctrlKey) {
+    const source = prompt("Enter source node ID:");
+    const target = prompt("Enter target node ID:");
+    const capacity = prompt("Enter edge capacity:");
+    
+    if (source && target && capacity && 
+        !isNaN(parseInt(capacity)) && 
+        cy.getElementById(source).length > 0 && 
+        cy.getElementById(target).length > 0) {
+      cy.add({ data: { source, target, capacity } });
+    }
+  }
+});
+
+//Function to delete node
+function deleteNode() {
+  if (selectedNode) {
+    cy.remove(selectedNode);
+    selectedNode = null;
+    updateNodeSelects();
+  } else {
+    alert("Choisissez d'abord un noeud à supprimer en cliquant dessus");
+  }
+}
+
+function cleanGraph() {
+  cy.elements().remove();
+  nodeCount = 0;
+  edgeCount = 0;
+  selectedNode = null;
+  alert("You can now click to add nodes and edges.");
+}
+
+
+function numberToLetters(num) {
+  let letters = '';
+  do {
+    letters = String.fromCharCode(65 + (num % 26)) + letters;
+    num = Math.floor(num / 26) - 1;
+  } while (num >= 0);
+  return letters;
+}
+
+function handleBackgroundClick(event) {
+  if (event.target === cy) {
+    function numberToLetters(num) {
+      let letters = '';
+      do {
+        letters = String.fromCharCode(65 + (num % 26)) + letters;
+        num = Math.floor(num / 26) - 1;
+      } while (num >= 0);
+      return letters;
+    }
+
+    const id = numberToLetters(nodeCount++);
+    cy.add({
+      group: "nodes",
+      data: { id: id, label: id },
+      position: event.position
+    });
+    updateNodeSelects?.(); // Optional, if defined
+  }
+}
+
+
+function handleNodeClick(event) {
+  if (selectedNode === null) {
+    selectedNode = event.target;
+    selectedNode.style("background-color", "yellow");
+  } else {
+    const source = selectedNode.id();
+    const target = event.target.id();
+    
+    if (source !== target) {
+      const edgeId = `e${edgeCount++}`;
+      cy.add({
+        group: "edges",
+        data: {
+          id: edgeId,
+          source: source,
+          target: target,
+          capacity: 10,
+          label: "10"
+        }
+      });
+    }
+
+    selectedNode.style("background-color", "green");
+    selectedNode = null;
+  }
+}
+
+
+// Add UI info
+const infoPanel = document.createElement('div');
+infoPanel.innerHTML = `
+  <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 5px;">
+    <b>Controls:</b><br>
+    • Ctrl+N: Add node<br>
+    • Ctrl+E: Add edge<br>
+    • Right-click edge: Change capacity
+  </div>
+`;
+document.body.appendChild(infoPanel);
+
+
+
+
+function loadOtherGraph(data) {
+  if (!data || !Array.isArray(data.otherGraph)) {
+    console.error("❌ otherGraph is undefined or not an array:", data);
+    return;
+  }
+
+  const edgeElements = data.otherGraph;
+
+  // 1. Extract unique node ids
+  const nodeIds = new Set();
+  edgeElements.forEach(el => {
+    nodeIds.add(el.data.source);
+    nodeIds.add(el.data.target);
+  });
+
+  // 2. Create node elements
+  const nodeElements = Array.from(nodeIds).map(id => ({ data: { id } }));
+
+  // 3. Combine nodes and edges
+  const fullGraphElements = nodeElements.concat(edgeElements);
+
+  // 4. Clear previous elements
+  cyFinalGraph.elements().remove();
+
+  // 5. Add new graph
+  cyFinalGraph.add(fullGraphElements);
+
+  // 6. Layout
+  cyFinalGraph.layout({
+    name: 'breadthfirst',
+    directed: true,
+    padding: 30
+  }).run();
+
+  cyFinalGraph.fit();
+}
+
+
+
