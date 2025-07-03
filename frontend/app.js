@@ -116,6 +116,17 @@ function cleanGraph() {
   selectedNode = null;
   alert("You can now click to add nodes and edges.");
 }
+
+function deleteNode() {
+  if (selectedNode) {
+    cy.remove(selectedNode);
+    selectedNode = null;
+    updateNodeSelects();
+  } else {
+    alert("Choisissez d'abord un noeud à supprimer en cliquant dessus");
+  }
+}
+
 function numberToLetters(num) {
   let letters = '';
   do {
@@ -474,43 +485,78 @@ function loadNewGraph() {
   switch(graphType) {
     case "1": // Simple graph
       cy.add([
-        { data: { id: 'S' } },
-        { data: { id: 'A' } },
-        { data: { id: 'B' } },
-        { data: { id: 'T' } },
-        { data: { source: 'S', target: 'A', capacity: '10' } },
-        { data: { source: 'S', target: 'B', capacity: '5' } },
-        { data: { source: 'A', target: 'B', capacity: '2' } },
-        { data: { source: 'A', target: 'T', capacity: '8' } },
-        { data: { source: 'B', target: 'T', capacity: '7' } }
-      ]);
-      break;
-    case "2": // Complex graph with bottlenecks
-      cy.add([
-        { data: { id: 'S' } },
+        { data: { id: 'Deb' } },
         { data: { id: 'A' } },
         { data: { id: 'B' } },
         { data: { id: 'C' } },
         { data: { id: 'D' } },
         { data: { id: 'E' } },
-	{ data: { id: 'F' } },
+        { data: { id: 'F' } },
         { data: { id: 'G' } },
-	{ data: { id: 'T' } },
-        { data: { source: 'S', target: 'A', capacity: '45' } },
-        { data: { source: 'S', target: 'B', capacity: '25' } },
-        { data: { source: 'S', target: 'C', capacity: '30' } },
-        { data: { source: 'A', target: 'D', capacity: '10' } },
-        { data: { source: 'A', target: 'E', capacity: '15' } },
-        { data: { source: 'A', target: 'G', capacity: '20' } },
-        { data: { source: 'B', target: 'D', capacity: '20' } },
-        { data: { source: 'B', target: 'E', capacity: '5' } },
-        { data: { source: 'B', target: 'F', capacity: '15' } },
+        { data: { id: 'H' } },
+        { data: { id: 'I' } },
+        { data: { id: 'J' } },
+        { data: { id: 'K' } },
+        { data: { id: 'L' } },
+        { data: { id: 'Fin' } },
+        { data: { source: 'Deb', target: 'A', capacity: '15' } },
+        { data: { source: 'Deb', target: 'B', capacity: '10' } },
+        { data: { source: 'Deb', target: 'C', capacity: '15' } },
+        { data: { source: 'Deb', target: 'D', capacity: '15' } },
+        { data: { source: 'B', target: 'A', capacity: '5' } },
+        { data: { source: 'B', target: 'F', capacity: '5' } },
         { data: { source: 'C', target: 'F', capacity: '10' } },
-        { data: { source: 'C', target: 'G', capacity: '15' } },
-	{ data: { source: 'D', target: 'T', capacity: '30' } },
-	{ data: { source: 'E', target: 'T', capacity: '10' } },
-	{ data: { source: 'F', target: 'T', capacity: '20' } },
-        { data: { source: 'G', target: 'T', capacity: '40' } }
+        { data: { source: 'C', target: 'G', capacity: '7' } },
+        { data: { source: 'D', target: 'G', capacity: '10' } },
+        { data: { source: 'A', target: 'E', capacity: '7' } },
+        { data: { source: 'E', target: 'H', capacity: '4' } },
+        { data: { source: 'E', target: 'I', capacity: '15' } },
+        { data: { source: 'E', target: 'F', capacity: '5' } },
+        { data: { source: 'F', target: 'I', capacity: '15' } },
+        { data: { source: 'F', target: 'G', capacity: '5' } },
+        { data: { source: 'G', target: 'I', capacity: '15' } },
+        { data: { source: 'H', target: 'J', capacity: '7' } },
+        { data: { source: 'I', target: 'H', capacity: '7' } },
+        { data: { source: 'I', target: 'K', capacity: '30' } },
+        { data: { source: 'I', target: 'L', capacity: '4' } },
+        { data: { source: 'J', target: 'Fin', capacity: '15' } },
+        { data: { source: 'K', target: 'J', capacity: '10' } },
+        { data: { source: 'K', target: 'Fin', capacity: '20' } },
+        { data: { source: 'L', target: 'Fin', capacity: '15' } }
+      ]);
+      break;
+    case "2": // Complex graph with bottlenecks
+      cy.add([
+        { data: { id: 'A' } },
+        { data: { id: 'B' } },
+        { data: { id: 'C' } },
+        { data: { id: 'D' } },
+        { data: { id: 'E' } },
+        { data: { id: 'F' } },
+	      { data: { id: 'G' } },
+        { data: { id: 'H' } },
+	      { data: { id: 'I' } },
+        { data: { id: 'J' } },
+        { data: { source: 'A', target: 'B', capacity: '60' } },
+        { data: { source: 'A', target: 'E', capacity: '25' } },
+        { data: { source: 'A', target: 'D', capacity: '40' } },
+        { data: { source: 'B', target: 'C', capacity: '40' } },
+        { data: { source: 'B', target: 'E', capacity: '30' } },
+        { data: { source: 'C', target: 'I', capacity: '50' } },
+        { data: { source: 'C', target: 'F', capacity: '20' } },
+        { data: { source: 'D', target: 'G', capacity: '20' } },
+        { data: { source: 'E', target: 'C', capacity: '15' } },
+        { data: { source: 'E', target: 'H', capacity: '20' } },
+        { data: { source: 'E', target: 'G', capacity: '10' } },
+	      { data: { source: 'E', target: 'D', capacity: '20' } },
+        { data: { source: 'F', target: 'I', capacity: '5' } },
+        { data: { source: 'F', target: 'H', capacity: '10' } },
+        { data: { source: 'F', target: 'E', capacity: '10' } },
+        { data: { source: 'G', target: 'F', capacity: '15' } },
+        { data: { source: 'G', target: 'H', capacity: '30' } },
+        { data: { source: 'H', target: 'J', capacity: '55' } },
+        { data: { source: 'I', target: 'J', capacity: '60' } },
+        { data: { source: 'I', target: 'H', capacity: '20' } }       
 ]);
       break;
     case "3": // Random graph

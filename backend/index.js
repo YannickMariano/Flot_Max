@@ -31,7 +31,7 @@ function fordFulkerson(nodes, edges, sourceId, sinkId) {
         const cap = parseInt(edge.data.capacity);
         capacity[u][v] += cap;
     }
-
+    
     // Track all augmenting paths and their flows
     const allPaths = [];
     let maxFlow = 0;
