@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualiseur de Flot Complet & Flot Maximum</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1em;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-panel h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        }
+
+        .examples {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .example-btn {
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .example-btn:hover {
+            background: #cbd5e0;
+            transform: translateY(-1px);
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .result-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-section h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .graph-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .graph-item {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .graph-item h4 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .graph-canvas {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #4a5568;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .combinations-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+        }
+
+        .combination-item {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .combination-item:hover {
+            background: #edf2f7;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .combination-item.selected {
+            background: #e6fffa;
+            border-color: #38b2ac;
+        }
+
+        .combination-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .combination-title {
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .combination-flows {
+            display: flex;
+            gap: 20px;
+        }
+
+        .flow-info {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .flow-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #4a5568;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #e53e3e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .graph-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Visualiseur de Flot Complet & Flot Maximum</h1>
+            <p>Testez et visualisez les algorithmes de Manuel Bloch et Ford-Fulkerson</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-panel">
+                <h3>📊 Configuration du Graphe</h3>
+                
+                <div class="input-group">
+                    <label>Exemples prédéfinis :</label>
+                    <div class="examples">
+                        <button class="example-btn" onclick="loadExample('simple')">Simple</button>
+                        <button class="example-btn" onclick="loadExample('complex')">Complexe</button>
+                        <button class="example-btn" onclick="loadExample('parallel')">Parallèle</button>
+                        <button class="example-btn" onclick="loadExample('diamond')">Diamant</button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="graphData">Données du graphe (JSON) :</label>
+                    <textarea id="graphData" placeholder="Coller votre JSON ici..."></textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="input-group">
+                        <label for="sourceNode">Source :</label>
+                        <input type="text" id="sourceNode" value="A" placeholder="Nœud source">
+                    </div>
+                    <div class="input-group">
+                        <label for="sinkNode">Puits :</label>
+                        <input type="text" id="sinkNode" value="D" placeholder="Nœud puits">
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>⚙️ Actions</h3>
+                
+                <div class="input-group">
+                    <label>Algorithmes :</label>
+                    <button class="btn" onclick="calculateMaxFlow()">🔄 Flot Standard</button>
+                    <button class="btn secondary" onclick="calculateAllCombinations()">🔍 Toutes les Combinaisons</button>
+                    <button class="btn danger" onclick="analyzeGraph()">📈 Analyser le Graphe</button>
+                </div>
+
+                <div class="input-group">
+                    <label>Utilitaires :</label>
+                    <button class="btn" onclick="clearResults()">🧹 Effacer</button>
+                    <button class="btn" onclick="downloadResults()">💾 Télécharger</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="serverUrl">URL du serveur :</label>
+                    <input type="text" id="serverUrl" value="http://localhost:3000" placeholder="http://localhost:3000">
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        let currentResults = null;
+        let cytoscapeInstances = [];
+
+        // Exemples prédéfinis
+        const examples = {
+            simple: {
+                nodes: [
+                    { data: { id: 'A' } },
+                    { data: { id: 'B' } },
+                    { data: { id: 'C' } },
+                    { data: { id: 'D' } }
+                ],
+                edges: [
+                    { data: { source: 'A', target: 'B', capacity: '10' } },
+                    { data: { source: 'A', target: 'C', capacity: '8' } },
+                    { data: { source: 'B', target: 'D', capacity: '5' } },
+                    { data: { source: 'C', target: 'D', capacity: '7' } }
+                ],
+                source: 'A',
+                sink: 'D'
+            },
+            complex: {
+                nodes: [
+                    { data: { id: 'S' } },
+                    { data: { id: 'A' } },
+                    { data: { id: 'B' } },
+                    { data: { id: 'C' } },
+                    { data: { id: 'D' } },
+                    { data: { id: 'T' } }
+                ],
+                edges: [
+                    { data: { source: 'S', target: 'A', capacity: '15' } },
+                    { data: { source: 'S', target: 'B', capacity: '12' } },
+                    { data: { source: 'A', target: 'C', capacity: '8' } },
+                    { data: { source: 'B', target: 'D', capacity: '10' } },
+                    { data: { source: 'A', target: 'D', capacity: '6' } },
+                    { data: { source: 'C', target: 'T', capacity: '9' } },
+                    { data: { source: 'D', target: 'T', capacity: '11' } }
+                ],
+                source: 'S',
+                sink: 'T'
+            },
+            parallel: {
+                nodes: [
+                    { data: { id: 'A' } },
+                    { data: { id: 'B' } },
+                    { data: { id: 'C' } },
+                    { data: { id: 'D' } }
+                ],
+                edges: [
+                    { data: { source: 'A', target: 'B', capacity: '5' } },
+                    { data: { source: 'A', target: 'C', capacity: '5' } },
+                    { data: { source: 'B', target: 'D', capacity: '3' } },
+                    { data: { source: 'C', target: 'D', capacity: '4' } }
+                ],
+                source: 'A',
+                sink: 'D'
+            },
+            diamond: {
+                nodes: [
+                    { data: { id: 'S' } },
+                    { data: { id: 'A' } },
+                    { data: { id: 'B' } },
+                    { data: { id: 'C' } },
+                    { data: { id: 'D' } },
+                    { data: { id: 'T' } }
+                ],
+                edges: [
+                    { data: { source: 'S', target: 'A', capacity: '20' } },
+                    { data: { source: 'S', target: 'B', capacity: '20' } },
+                    { data: { source: 'A', target: 'C', capacity: '15' } },
+                    { data: { source: 'A', target: 'D', capacity: '10' } },
+                    { data: { source: 'B', target: 'C', capacity: '8' } },
+                    { data: { source: 'B', target: 'D', capacity: '12' } },
+                    { data: { source: 'C', target: 'T', capacity: '18' } },
+                    { data: { source: 'D', target: 'T', capacity: '16' } }
+                ],
+                source: 'S',
+                sink: 'T'
+            }
+        };
+
+        function loadExample(type) {
+            const example = examples[type];
+            document.getElementById('graphData').value = JSON.stringify({
+                nodes: example.nodes,
+                edges: example.edges
+            }, null, 2);
+            document.getElementById('sourceNode').value = example.source;
+            document.getElementById('sinkNode').value = example.sink;
+        }
+
+        function parseGraphData() {
+            try {
+                const data = JSON.parse(document.getElementById('graphData').value);
+                const source = document.getElementById('sourceNode').value;
+                const sink = document.getElementById('sinkNode').value;
+                
+                return { ...data, source, sink };
+            } catch (error) {
+                throw new Error('Format JSON invalide');
+            }
+        }
+
+        async function makeRequest(endpoint, data) {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const response = await fetch(`${serverUrl}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+
+            return await response.json();
+        }
+
+        async function calculateMaxFlow() {
+            try {
+                showLoading('Calcul du flot standard...');
+                const data = parseGraphData();
+                const result = await makeRequest('/maxflow', data);
+                
+                displayStandardResults(result);
+            } catch (error) {
+                showError('Erreur lors du calcul du flot standard: ' + error.message);
+            }
+        }
+
+        async function calculateAllCombinations() {
+            try {
+                showLoading('Calcul de toutes les combinaisons...');
+                const data = parseGraphData();
+                const result = await makeRequest('/all-combinations', data);
+                
+                displayCombinationsResults(result);
+            } catch (error) {
+                showError('Erreur lors du calcul des combinaisons: ' + error.message);
+            }
+        }
+
+        async function analyzeGraph() {
+            try {
+                showLoading('Analyse du graphe...');
+                const data = parseGraphData();
+                const result = await makeRequest('/analyze-graph', data);
+                
+                displayAnalysisResults(result);
+            } catch (error) {
+                showError('Erreur lors de l\'analyse: ' + error.message);
+            }
+        }
+
+        function showLoading(message) {
+            document.getElementById('results').innerHTML = `
+                <div class="result-section">
+                    <div class="loading">${message}</div>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            document.getElementById('results').innerHTML = `
+                <div class="error">${message}</div>
+            `;
+        }
+
+        function displayStandardResults(result) {
+            currentResults = result;
+            
+            document.getElementById('results').innerHTML = `
+                <div class="result-section">
+                    <h3>📊 Résultats du Flot Standard</h3>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${result.maxFlow}</div>
+                            <div class="stat-label">Flot Maximum</div>
+                        </div>
+                    </div>
+                    <div class="graph-container">
+                        <div class="graph-item">
+                            <h4>Graphe Initial</h4>
+                            <div id="graph-initial" class="graph-canvas"></div>
+                        </div>
+                        <div class="graph-item">
+                            <h4>Après Flot Complet (Capacités Restantes)</h4>
+                            <div id="graph-bloch" class="graph-canvas"></div>
+                        </div>
+                        <div class="graph-item">
+                            <h4>Après Flot Maximum (Flot Utilisé)</h4>
+                            <div id="graph-ford" class="graph-canvas"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Créer les graphiques
+            setTimeout(() => {
+                createGraph('graph-initial', result.graph_initial);
+                createGraph('graph-bloch', result.graph_after_bloch);
+                createGraph('graph-ford', result.graph_after_ford);
+            }, 100);
+        }
+
+        function displayCombinationsResults(result) {
+            currentResults = result;
+            
+            document.getElementById('results').innerHTML = `
+                <div class="result-section">
+                    <h3>🔍 Toutes les Combinaisons Possibles</h3>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${result.total_combinations}</div>
+                            <div class="stat-label">Combinaisons Totales</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${result.unique_flow_pairs}</div>
+                            <div class="stat-label">Paires Uniques</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                        <div>
+                            <h4>Liste des Combinaisons</h4>
+                            <div class="combinations-list" id="combinations-list"></div>
+                        </div>
+                        <div>
+                            <h4>Visualisation</h4>
+                            <div id="combination-graphs" class="graph-container"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Afficher la liste des combinaisons
+            const combinationsList = document.getElementById('combinations-list');
+            result.combinations.forEach((combo, index) => {
+                const item = document.createElement('div');
+                item.className = 'combination-item';
+                item.onclick = () => selectCombination(index, combo);
+                item.innerHTML = `
+                    <div class="combination-header">
+                        <div class="combination-title">Combinaison ${combo.id}</div>
+                        <div class="combination-flows">
+                            <div class="flow-info">
+                                <span>Flot Complet:</span>
+                                <span class="flow-value">${combo.complete_flow_value}</span>
+                            </div>
+                            <div class="flow-info">
+                                <span>Flot Max:</span>
+                                <span class="flow-value">${combo.max_flow_value}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                combinationsList.appendChild(item);
+            });
+
+            // Sélectionner la première combinaison par défaut
+            if (result.combinations.length > 0) {
+                selectCombination(0, result.combinations[0]);
+            }
+        }
+
+        function selectCombination(index, combo) {
+            // Mettre à jour la sélection visuelle
+            document.querySelectorAll('.combination-item').forEach((item, i) => {
+                item.classList.toggle('selected', i === index);
+            });
+
+            // Afficher les graphiques de cette combinaison
+            document.getElementById('combination-graphs').innerHTML = `
+                <div class="graph-item">
+                    <h4>Flot Complet - Capacités Restantes</h4>
+                    <div id="combo-complete-residual" class="graph-canvas"></div>
+                </div>
+                <div class="graph-item">
+                    <h4>Flot Complet - Flot Utilisé</h4>
+                    <div id="combo-complete-flow" class="graph-canvas"></div>
+                </div>
+                <div class="graph-item">
+                    <h4>Flot Maximum - Capacités Restantes</h4>
+                    <div id="combo-max-residual" class="graph-canvas"></div>
+                </div>
+                <div class="graph-item">
+                    <h4>Flot Maximum - Flot Utilisé</h4>
+                    <div id="combo-max-flow" class="graph-canvas"></div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                createGraph('combo-complete-residual', combo.graphs.complete_flow.residual);
+                createGraph('combo-complete-flow', combo.graphs.complete_flow.used_flow);
+                createGraph('combo-max-residual', combo.graphs.max_flow.residual);
+                createGraph('combo-max-flow', combo.graphs.max_flow.used_flow);
+            }, 100);
+        }
+
+        function displayAnalysisResults(result) {
+            currentResults = result;
+            
+            document.getElementById('results').innerHTML = `
+                <div class="result-section">
+                    <h3>📈 Analyse du Graphe</h3>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${result.graph_info.nodes}</div>
+                            <div class="stat-label">Nœuds</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${result.graph_info.edges}</div>
+                            <div class="stat-label">Arêtes</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${result.graph_info.total_capacity}</div>
+                            <div class="stat-label">Capacité Totale</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${result.graph_info.paths_count}</div>
+                            <div class="stat-label">Chemins Possibles</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${result.flows.complete_flow}</div>
+                            <div class="stat-label">Flot Complet</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${result.flows.max_flow}</div>
+                            <div class="stat-label">Flot Maximum</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                        <h4>Chemins de ${result.graph_info.source} à ${result.graph_info.sink}</h4>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            ${result.paths.map(path => `
+                                <div style="padding: 10px; border-bottom: 1px solid #e2e8f0;">
+                                    <strong>Chemin ${path.id}:</strong> ${path.path} (${path.edges} arêtes)
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createGraph(containerId, data) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            // Nettoyer les instances précédentes
+            const existingInstance = cytoscapeInstances.find(instance => instance.container().id === containerId);
+            if (existingInstance) {
+                existingInstance.destroy();
+                cytoscapeInstances = cytoscapeInstances.filter(instance => instance !== existingInstance);
+            }
+
+            const cy = cytoscape({
+                container: container,
+                elements: data,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': '#667eea',
+                            'label': 'data(id)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': 'white',
+                            'font-size': '14px',
+                            'font-weight': 'bold',
+                            'width': 40,
+                            'height': 40
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 3,
+                            'line-color': '#764ba2',
+                            'target-arrow-color': '#764ba2',
+                            'target-arrow-shape': 'triangle',
+                            'arrow-scale': 1.5,
+                            'label': 'data(capacity)',
+                            'font-size': '12px',
+                            'color': '#2d3748',
+                            'text-background-color': 'white',
+                            'text-background-opacity': 0.8,
+                            'text-background-padding': '3px'
+                        }
+                    },
+                    {
+                        selector: 'edge[capacity="0"]',
+                        style: {
+                            'line-color': '#cbd5e0',
+                            'target-arrow-color': '#cbd5e0',
+                            'opacity': 0.5
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'breadthfirst',
+                    directed: true,
+                    padding: 20,
+                    spacingFactor: 1.5
+                }
+            });
+
+            cytoscapeInstances.push(cy);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            currentResults = null;
+            
+            // Nettoyer toutes les instances Cytoscape
+            cytoscapeInstances.forEach(instance => instance.destroy());
+            cytoscapeInstances = [];
+        }
+
+    </script>
+</body>
+</html>
