@@ -486,6 +486,9 @@ function fordFulkersonEnhanced(graph, source, sink) {
   };
 }
 
+
+
+
 // --- Calculer le flot total
 function calculateTotalFlow(graph, source) {
   let totalFlow = 0;
