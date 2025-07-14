@@ -487,10 +487,7 @@ app.post('/maxflow', (req, res) => {
         
         // Include all results in the response
         res.json({ 
-            ...result, 
-            otherGraph,
-            graphComplet,
-            graphMax
+            ...result
         });
     } catch (err) {
         res.status(500).json({ error: 'Calculation error', details: err.message });

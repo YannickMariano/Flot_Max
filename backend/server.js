@@ -367,34 +367,123 @@ function bfs(graph, source, sink, parent) {
 }
 
 // --- Implémentation de Ford-Fulkerson
-function fordFulkerson(graph, source, sink) {
+// --- Enhanced Ford-Fulkerson with detailed edge information
+function fordFulkersonEnhanced(graph, source, sink) {
+  const graphCopy = cloneGraph(graph);
   const parent = {};
+  const allPaths = [];
+  let maxFlow = 0;
 
-  while (bfs(graph, source, sink, parent)) {
+  // Track all augmenting paths
+  while (bfs(graphCopy, source, sink, parent)) {
+    // Find path flow
     let pathFlow = Infinity;
     let v = sink;
-
+    const currentPath = [];
+    
     while (v !== source) {
       const u = parent[v];
-      pathFlow = Math.min(pathFlow, graph[u][v].capacity - graph[u][v].flow);
+      const residual = graphCopy[u][v].capacity - graphCopy[u][v].flow;
+      pathFlow = Math.min(pathFlow, residual);
+      currentPath.unshift({ from: u, to: v });
       v = u;
     }
 
+    // Record this augmenting path
+    allPaths.push({
+      flow: pathFlow,
+      path: currentPath.slice(),
+      nodes: [...new Set(currentPath.flatMap(edge => [edge.from, edge.to]))]
+    });
+
+    // Update flow
     v = sink;
     while (v !== source) {
       const u = parent[v];
-      graph[u][v].flow += pathFlow;
-      graph[v][u].flow -= pathFlow;
+      graphCopy[u][v].flow += pathFlow;
+      graphCopy[v][u].flow -= pathFlow;
       v = u;
+    }
+
+    maxFlow += pathFlow;
+  }
+
+  // Find the path with maximum flow contribution
+  const maxFlowPath = allPaths.reduce((max, current) => 
+    current.flow > max.flow ? current : max, 
+    { flow: 0, path: [], nodes: [] }
+  );
+
+  // Calculate node importance based on flow contribution
+  const nodeImportance = {};
+  let maxFrequency = 0;
+  
+  allPaths.forEach(pathInfo => {
+    pathInfo.nodes.forEach(nodeId => {
+      nodeImportance[nodeId] = (nodeImportance[nodeId] || 0) + pathInfo.flow;
+      maxFrequency = Math.max(maxFrequency, nodeImportance[nodeId]);
+    });
+  });
+
+  // Filter critical nodes (those carrying most flow)
+  const criticalNodes = Object.entries(nodeImportance)
+    .filter(([_, value]) => value > maxFrequency * 0.7)
+    .map(([nodeId]) => nodeId);
+
+  // Generate detailed edge information
+  const flowEdges = [];
+  const saturatedEdges = [];
+  const bottleneckEdges = [];
+
+  for (const u in graph) {
+    for (const v in graph[u]) {
+      if (graph[u][v].capacity > 0) {
+        const flow = graphCopy[u][v].flow;
+        const capacity = graph[u][v].capacity;
+        const saturated = flow === capacity;
+
+        const edgeInfo = {
+          from: u,
+          to: v,
+          flow: flow,
+          capacity: capacity,
+          saturated: saturated
+        };
+
+        if (flow > 0) {
+          flowEdges.push(edgeInfo);
+        }
+
+        if (saturated) {
+          saturatedEdges.push({
+            from: u,
+            to: v
+          });
+        }
+
+        if (flow === 0 && capacity > 0) {
+          bottleneckEdges.push({
+            from: u,
+            to: v,
+            capacity: capacity
+          });
+        }
+      }
     }
   }
 
-  let maxFlow = 0;
-  for (const v in graph[source]) {
-    maxFlow += graph[source][v].flow;
-  }
-
-  return { graph, maxFlow };
+  return {
+    graph: graphCopy,
+    maxFlow,
+    flowEdges,
+    saturatedEdges,
+    bottleneckEdges,
+    maxFlowPath: maxFlowPath.path,
+    maxFlowNodes: maxFlowPath.nodes,
+    maxFlowValue: maxFlowPath.flow,
+    criticalNodes,
+    allPaths
+  };
 }
 
 // --- Calculer le flot total
@@ -477,19 +566,33 @@ app.post('/maxflow', (req, res) => {
     pathCache.clear();
     
     const initialGraph = parseCytoscapeInput({ nodes, edges });
+    
+    // Use Manuel Bloch for complete flow
     const blochResult = manuelBlochSystematic(initialGraph, source, sink, []);
-    const { graph: fordGraph, maxFlow } = fordFulkerson(cloneGraph(blochResult.graph), source, sink);
+    
+    // Use enhanced Ford-Fulkerson for detailed max flow analysis
+    const fordResult = fordFulkersonEnhanced(cloneGraph(initialGraph), source, sink);
     
     // Calculer le chemin critique
-    const criticalPath = findCriticalPath(initialGraph, fordGraph, source, sink);
+    const criticalPath = findCriticalPath(initialGraph, fordResult.graph, source, sink);
 
     return res.json({
-      maxFlow,
+      maxFlow: fordResult.maxFlow,
       graph_initial: [...nodes, ...edges],
       graph_after_bloch: graphWithUpdatedCapacities(blochResult.graph, initialGraph),
-      graph_after_ford: graphWithUsedFlow(fordGraph, initialGraph),
+      graph_after_ford: graphWithUsedFlow(fordResult.graph, initialGraph),
       is_complete_flow: isCompleteFlow(blochResult.graph, source, sink),
-      chemin_critique: criticalPath
+      chemin_critique: criticalPath,
+      
+      // Enhanced detailed information
+      flowEdges: fordResult.flowEdges,
+      saturatedEdges: fordResult.saturatedEdges,
+      bottleneckEdges: fordResult.bottleneckEdges,
+      maxFlowPath: fordResult.maxFlowPath,
+      maxFlowNodes: fordResult.maxFlowNodes,
+      maxFlowValue: fordResult.maxFlowValue,
+      criticalNodes: fordResult.criticalNodes,
+      allAugmentingPaths: fordResult.allPaths
     });
   } catch (error) {
     return res.status(500).json({ 
