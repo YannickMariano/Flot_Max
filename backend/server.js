@@ -996,20 +996,20 @@ app.post('/maxflow', (req, res) => {
 // --- Endpoint modifié pour toutes les combinaisons avec format de graphe uniforme
 app.post('/all-combinations', (req, res) => {
   const { nodes, edges, source, sink } = req.body;
-
+ 
   if (!nodes || !edges || !source || !sink) {
     return res.status(400).json({ error: "Champs requis : nodes, edges, source, sink" });
   }
-
+ 
   try {
     // Nettoyer le cache
     pathCache.clear();
-    
+         
     const initialGraph = parseCytoscapeInput({ nodes, edges });
-    
+         
     // Générer toutes les variantes optimisées
     const completeFlowVariants = generateAllCompleteFlowsOptimized(initialGraph, source, sink);
-    
+         
     if (completeFlowVariants.length === 0) {
       return res.json({
         total_combinations: 0,
@@ -1026,51 +1026,73 @@ app.post('/all-combinations', (req, res) => {
         message: "Aucune variante de flot complet trouvée"
       });
     }
-
+ 
     // Traiter chaque variante avec le même format que /maxflow
     const combinations = completeFlowVariants.map((variant, index) => {
       try {
-        const { graph: maxFlowGraph, maxFlow } = fordFulkerson(cloneGraph(variant.completeFlow), source, sink);
+        // Utiliser Ford-Fulkerson pour obtenir toutes les informations détaillées
+        const fordResult = fordFulkerson(cloneGraph(variant.completeFlow), source, sink);
         const completeFlowValue = calculateTotalFlow(variant.completeFlow, source);
-        
+                 
         // Calculer le chemin critique pour cette variante
-        const criticalPath = findCriticalPath(initialGraph, maxFlowGraph, source, sink);
+        const criticalPath = findCriticalPath(initialGraph, fordResult.graph, source, sink);
         
+        // Validation pour cette variante
+        const fordValidation = validateFlow(fordResult.graph, source, sink);
+        if (fordValidation.length > 0) {
+          console.warn(`Ford-Fulkerson validation issues for variant ${index}:`, fordValidation);
+        }
+                 
         return {
           id: index + 1,
           complete_flow_value: completeFlowValue,
-          max_flow_value: maxFlow,
+          max_flow_value: fordResult.maxFlow,
           is_complete_flow: isCompleteFlow(variant.completeFlow, source, sink),
           generation_method: variant.method,
           choice_info: variant.choiceSequence || variant.actualChoices || variant.seed,
-          
+                     
           // Format identique à /maxflow
           graph_initial: [...nodes, ...edges],
-          graph_flot_complet: graphWithUpdatedCapacities(variant.completeFlow, initialGraph),
-          graph_flot_max: graphWithUsedFlow(maxFlowGraph, initialGraph),
-          chemin_critique: criticalPath
+          graph_after_bloch: graphWithUpdatedCapacities(variant.completeFlow, initialGraph),
+          graph_after_ford: graphWithUsedFlow(fordResult.graph, initialGraph),
+          chemin_critique: criticalPath,
+          
+          // Enhanced detailed information (identique à /maxflow)
+          flowEdges: fordResult.flowEdges,
+          saturatedEdges: fordResult.saturatedEdges,
+          bottleneckEdges: fordResult.bottleneckEdges,
+          maxFlowPath: fordResult.maxFlowPath,
+          maxFlowNodes: fordResult.maxFlowNodes,
+          maxFlowValue: fordResult.maxFlowValue,
+          criticalNodes: fordResult.criticalNodes,
+          allAugmentingPaths: fordResult.allPaths,
+          
+          // Add validation info for debugging
+          validation: {
+            ford_issues: fordValidation
+          }
         };
       } catch (error) {
         console.warn(`Erreur pour la variante ${index}:`, error.message);
         return null;
       }
     }).filter(c => c !== null);
-
+ 
     // Statistiques
     const uniqueCompletePairs = [...new Set(combinations.map(c => `${c.complete_flow_value}-${c.max_flow_value}`))];
     const validCompleteFlows = combinations.filter(c => c.is_complete_flow);
     const flowDistribution = {};
-    
+         
     combinations.forEach(c => {
       const key = `${c.complete_flow_value}-${c.max_flow_value}`;
       flowDistribution[key] = (flowDistribution[key] || 0) + 1;
     });
-    
+         
     // Éviter l'erreur "reduce of empty array"
-    const mostCommonPair = Object.keys(flowDistribution).length > 0 
-      ? Object.entries(flowDistribution).reduce((a, b) => a[1] > b[1] ? a : b)[0]
+    const mostCommonPair = Object.keys(flowDistribution).length > 0
+       ? Object.entries(flowDistribution).reduce((a, b) => a[1] > b[1] ? a : b)[0]
       : "N/A";
-    
+         
     return res.json({
       total_combinations: combinations.length,
       valid_complete_flows: validCompleteFlows.length,
@@ -1079,20 +1101,20 @@ app.post('/all-combinations', (req, res) => {
       flow_distribution: flowDistribution,
       combinations: combinations,
       analysis: {
-        completeness_rate: combinations.length > 0 
-          ? `${((validCompleteFlows.length / combinations.length) * 100).toFixed(2)}%`
+        completeness_rate: combinations.length > 0
+           ? `${((validCompleteFlows.length / combinations.length) * 100).toFixed(2)}%`
           : "0%",
         most_common_pair: mostCommonPair,
         generation_methods: [...new Set(combinations.map(c => c.generation_method))]
       }
     });
-
+ 
   } catch (error) {
     console.error('Erreur dans /all-combinations:', error);
-    return res.status(500).json({ 
-      error: "Erreur lors du calcul des combinaisons",
-      details: error.message 
-    });
+    return res.status(500).json({
+       error: "Erreur lors du calcul des combinaisons",
+      details: error.message
+     });
   }
 });
 
