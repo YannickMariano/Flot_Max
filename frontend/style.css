@@ -34,19 +34,24 @@ html, body {
   z-index: 999;
   width: 80%;
   max-width: 800px;
-  margin-top: 100px; /* Add margin to push the cards down */
+  margin-top: 100px; 
 }
 
 #original-graph-card {
-  top: 100px; /* Adjust the top position for the original graph card */
+  top: 100px;
 }
 
-#modified-graph-card {
+#flot-complet-graph-card {
   top: 620px;
+  margin-bottom: 50px; 
+}
+
+#flot-max-graph-card {
+  top: 1140px;
   margin-bottom: 50px; /* Adjust the top position for the modified graph card */
 }
 
-#cy-original, #cy-modified {
+#cy-original, #cy-flot-complet, #cy-flot-max {
   height: 400px; /* Set a fixed height for the graph containers */
   width: 100%;
   background-color: #f8f8f8;
@@ -65,6 +70,16 @@ html, body {
   display: flex;
   gap: 20px;
   align-items: center;
+}
+
+#deleteNode-btn{
+  background-color: #FF4136;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 14px;
 }
 
 /* New styles for node selection */
@@ -115,29 +130,97 @@ button:hover {
 }
 
 #legend {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 10px 15px;
-  border-radius: 8px;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  background: linear-gradient(135deg, #f8fafc 80%, #e0e7ff 100%);
+  padding: 18px 28px;
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(60, 64, 67, 0.12);
   z-index: 999;
+  min-width: 220px;
+  max-width: 340px;
+  border: 1px solid #dbeafe;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #22223b;
 }
 
 .legend-header {
   font-weight: bold;
-  font-size: 14px;
-  margin-bottom: 5px;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 3px;
+  font-size: 17px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #dbeafe;
+  padding-bottom: 6px;
+  color: #3b82f6;
+  letter-spacing: 0.5px;
+}
+
+.legend-list {
+  margin-top: 8px;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  margin: 5px 0;
-  font-size: 12px;
+  margin: 7px 0;
+  font-size: 14px;
+  transition: background 0.2s;
+  padding: 3px 0;
+  border-radius: 5px;
+}
+
+.legend-item:hover {
+  background: #f1f5fa;
+}
+
+.legend-label {
+  margin-left: 8px;
+  font-weight: 500;
+  color: #374151;
+  letter-spacing: 0.2px;
+}
+
+.color-box {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(60,64,67,0.10);
+  border: 2px solid #e0e7ff;
+}
+
+.color-box.source {
+  background-color: #3D9970;
+}
+
+.color-box.sink {
+  background-color: #FF4136;
+}
+
+.color-box.critical {
+  background-color: #FFDC00;
+  border: 2px solid #FF851B;
+}
+
+.color-box.flow-node {
+  background-color: #2ECC40;
+}
+
+.color-box.max-path {
+  background-color: #FF851B;
+  height: 8px;
+}
+
+.color-box.saturated {
+  background-color: #FF4136;
+  height: 8px;
+}
+
+.color-box.bottleneck {
+  background-color: #9400D3;
+  height: 8px;
+  border-top: 2px dashed #fff;
+  border-bottom: 2px dashed #fff;
 }
 
 .color-box {
@@ -180,3 +263,4 @@ button:hover {
   border-top: 1px dashed #fff;
   border-bottom: 1px dashed #fff;
 }
+

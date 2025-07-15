@@ -4,6 +4,7 @@
   <title>Maximum Flow Visualizer</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
 </head>
 <body>
   <div id="header">
@@ -12,38 +13,58 @@
   
   <div id="controls">
     <div class="node-selection">
-      <span>Source:</span>
+      <span>Debut:</span>
       <select id="source-select" class="node-select"></select>
-      <span>Sink:</span>
+      <span>Fin:</span>
       <select id="sink-select" class="node-select"></select>
     </div>
-    <button id="reset-btn" onclick="resetGraph()">Reset Graph</button>
-    <button id="new-graph-btn" onclick="loadNewGraph()">New Graph 1, 2, 3</button>
-    <button id="create-new-graph-btn">Create a New Graph</button>
-    <button id="calculate-btn" onclick="calculateMaxFlow()">Calculate Max Flow</button>
+    <button id="reset-btn" onclick="resetGraph()">Renitialiser le Graph</button>
+    <button id="new-graph-btn" onclick="loadNewGraph()">Charger le Graph: 1, 2, 3</button>
+    <button id="create-new-graph-btn">Creer nouveau Graph</button>
+    <button id="calculate-btn" onclick="calculateMaxFlow()">Calculer le Flot Max</button>
     <button id="deleteNode-btn" onclick="deleteNode()">Supprimer le Noeud</button>
   </div>
   
-  <div id="legend">
-    <div class="legend-header">Legend:</div>
-    <div class="legend-item"><span class="color-box source"></span> Source Node</div>
-    <div class="legend-item"><span class="color-box sink"></span> Sink Node</div>
-    <div class="legend-item"><span class="color-box critical"></span> Critical Node</div>
-    <div class="legend-item"><span class="color-box flow-node"></span> Flow Node</div>
-    <div class="legend-item"><span class="color-box max-path"></span> Max Flow Path</div>
-    <div class="legend-item"><span class="color-box saturated"></span> Saturated Edge</div>
-    <div class="legend-item"><span class="color-box bottleneck"></span> Blocked/Unused Edge</div>
+ <div id="legend">
+  <div class="legend-header">
+    <span style="font-size:18px;vertical-align:middle;">🎨</span> Légende
   </div>
+  <div class="legend-list">
+    <div class="legend-item"><span class="color-box source"></span> <span class="legend-label">Début</span></div>
+    <div class="legend-item"><span class="color-box sink"></span> <span class="legend-label">Fin</span></div>
+    <div class="legend-item"><span class="color-box critical"></span> <span class="legend-label">Chemin Critique</span></div>
+    <div class="legend-item"><span class="color-box flow-node"></span> <span class="legend-label">Flux</span></div>
+    <div class="legend-item"><span class="color-box max-path"></span> <span class="legend-label">Flot Max</span></div>
+    <div class="legend-item"><span class="color-box saturated"></span> <span class="legend-label">Arc saturé</span></div>
+    <div class="legend-item"><span class="color-box bottleneck"></span> <span class="legend-label">Arc bloqué/inutilisé</span></div>
+  </div>
+</div>
   
   <div class="card" id="original-graph-card">
-    <h2>Original Graph</h2>
+    <h2>GRAPH INITIAL</h2>
     <div id="cy-original"></div>
   </div>
 
-  <div class="card" id="modified-graph-card">
-    <h2>Modified Graph After Max Flow Calculation</h2>
-    <div id="cy-modified"></div>
+  <div class="card" id="flot-complet-graph-card">
+  <h2>FLOT COMPLET</h2>
+  <div class="navigation">
+    <button onclick="previousFlotComplet()">←</button>
+    <span id="flot-complet-index"></span>
+    <button onclick="nextFlotComplet()">→</button>
   </div>
+  <div id="cy-flot-complet"></div>
+</div>
+
+<div class="card" id="flot-max-graph-card">
+  <h2>FLOT MAX</h2>
+  <div class="navigation">
+    <button onclick="previousFlotMax()">←</button>
+    <span id="flot-max-index"></span>
+    <button onclick="nextFlotMax()">→</button>
+  </div>
+  <div id="cy-flot-max"></div>
+</div>
+
   
   <script src="app.js"></script>
 </body>

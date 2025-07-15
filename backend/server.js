@@ -29,46 +29,44 @@ function parseCytoscapeInput(data) {
 
 // --- Clone profond du graphe
 function cloneGraph(graph) {
-  const clone = {};
-  for (const u in graph) {
-    clone[u] = {};
-    for (const v in graph[u]) {
-      clone[u][v] = { ...graph[u][v] };
+  const cloned = {};
+  for (const from in graph) {
+    cloned[from] = {};
+    for (const to in graph[from]) {
+      cloned[from][to] = { ...graph[from][to] };
     }
   }
-  return clone;
+  return cloned;
 }
 
 // --- Cache pour les calculs de chemins
 const pathCache = new Map();
 
 // --- Recherche de tous les chemins simples de source à puits (optimisée avec cache)
-function findAllPaths(graph, start, end, visited = new Set(), path = []) {
-  const cacheKey = `${start}-${end}-${Array.from(visited).sort().join(',')}-${path.map(p => `${p.from}-${p.to}`).join(',')}`;
+function findAllPaths(graph, source, sink) {
+  const paths = [];
+  const visited = new Set();
   
-  if (pathCache.has(cacheKey)) {
-    return pathCache.get(cacheKey);
-  }
-
-  visited.add(start);
-  if (start === end) {
-    const result = [path.slice()];
-    pathCache.set(cacheKey, result);
-    return result;
-  }
-  
-  let paths = [];
-  for (const neighbor in graph[start]) {
-    const edge = graph[start][neighbor];
-    const residual = edge.capacity - edge.flow;
-    if (!visited.has(neighbor) && residual > 0) {
-      path.push({ from: start, to: neighbor });
-      paths = paths.concat(findAllPaths(graph, neighbor, end, new Set(visited), path));
-      path.pop();
+  function dfs(current, path) {
+    if (current === sink) {
+      paths.push([...path]);
+      return;
     }
+    
+    visited.add(current);
+    
+    for (const next in graph[current]) {
+      if (!visited.has(next) && graph[current][next].capacity > graph[current][next].flow) {
+        path.push({ from: current, to: next });
+        dfs(next, path);
+        path.pop();
+      }
+    }
+    
+    visited.delete(current);
   }
-
-  pathCache.set(cacheKey, paths);
+  
+  dfs(source, []);
   return paths;
 }
 
@@ -99,25 +97,24 @@ function isCompleteFlow(graph, source, sink) {
 
 // --- Obtenir toutes les arêtes avec capacité résiduelle minimale
 function getMinResidualEdges(graph) {
-  let minResidual = Infinity;
   const edges = [];
-
-  for (const u in graph) {
-    for (const v in graph[u]) {
-      const residual = graph[u][v].capacity - graph[u][v].flow;
-      if (residual > 0) {
-        if (residual < minResidual) {
-          minResidual = residual;
-          edges.length = 0;
-          edges.push({ from: u, to: v, residual });
-        } else if (residual === minResidual) {
-          edges.push({ from: u, to: v, residual });
+  
+  for (const from in graph) {
+    for (const to in graph[from]) {
+      const edge = graph[from][to];
+      if (edge.capacity > 0) { // Only consider original edges
+        const residual = edge.capacity - edge.flow;
+        if (residual > 0) {
+          edges.push({ from, to, residual });
         }
       }
     }
   }
-
-  return edges;
+  
+  if (edges.length === 0) return [];
+  
+  const minResidual = Math.min(...edges.map(e => e.residual));
+  return edges.filter(e => e.residual === minResidual);
 }
 
 // --- Algorithme de Manuel Bloch systématique
@@ -126,7 +123,7 @@ function manuelBlochSystematic(graph, source, sink, choiceSequence = []) {
   let step = 0;
   let actualChoices = [];
 
-  while (step < 100) { // Réduction de la limite pour éviter les boucles infinies
+  while (step < 100) {
     const minResidualEdges = getMinResidualEdges(graphCopy);
     if (minResidualEdges.length === 0) break;
 
@@ -144,8 +141,15 @@ function manuelBlochSystematic(graph, source, sink, choiceSequence = []) {
     if (!path) break;
 
     const minResidual = selected.residual;
+    
+    // Apply flow along the path
     for (const { from, to } of path) {
+      // Forward flow
       graphCopy[from][to].flow += minResidual;
+      // Backward flow (for residual graph)
+      if (!graphCopy[to][from]) {
+        graphCopy[to][from] = { capacity: 0, flow: 0 };
+      }
       graphCopy[to][from].flow -= minResidual;
     }
 
@@ -291,8 +295,11 @@ function getFlowSignature(graph) {
   const flows = [];
   for (const u in graph) {
     for (const v in graph[u]) {
-      if (graph[u][v].capacity > 0) {
-        flows.push(`${u}-${v}:${graph[u][v].flow}`);
+      const edge = graph[u][v];
+      // Only include original edges (with positive capacity) and their actual flow
+      if (edge.capacity > 0) {
+        const actualFlow = Math.max(0, Math.min(edge.flow, edge.capacity));
+        flows.push(`${u}-${v}:${actualFlow}`);
       }
     }
   }
@@ -303,49 +310,51 @@ function getFlowSignature(graph) {
 function graphWithUpdatedCapacities(graphWithFlow, originalGraph) {
   const nodes = Object.keys(originalGraph).map(id => ({ data: { id } }));
   const edges = [];
-
+  
   for (const from in originalGraph) {
     for (const to in originalGraph[from]) {
       const originalCap = originalGraph[from][to].capacity;
-      const flow = graphWithFlow[from]?.[to]?.flow ?? 0;
-
       if (originalCap > 0) {
-        const updatedCapacity = originalCap - flow;
+        const flow = graphWithFlow[from]?.[to]?.flow ?? 0;
+        // Ensure flow doesn't exceed capacity and isn't negative
+        const validFlow = Math.max(0, Math.min(flow, originalCap));
+        const residualCapacity = originalCap - validFlow;
+        
         edges.push({
           data: {
             source: from,
             target: to,
-            capacity: String(updatedCapacity)
+            capacity: String(Math.max(0, residualCapacity)) // Ensure non-negative
           }
         });
       }
     }
   }
-
   return [...nodes, ...edges];
 }
 
 function graphWithUsedFlow(graphWithFlow, originalGraph) {
   const nodes = Object.keys(originalGraph).map(id => ({ data: { id } }));
   const edges = [];
-
+  
   for (const from in originalGraph) {
     for (const to in originalGraph[from]) {
       const originalCap = originalGraph[from][to].capacity;
-      const flow = graphWithFlow[from]?.[to]?.flow ?? 0;
-
       if (originalCap > 0) {
+        const flow = graphWithFlow[from]?.[to]?.flow ?? 0;
+        // Ensure flow is non-negative and doesn't exceed capacity
+        const validFlow = Math.max(0, Math.min(flow, originalCap));
+        
         edges.push({
           data: {
             source: from,
             target: to,
-            capacity: String(flow)
+            capacity: String(validFlow)
           }
         });
       }
     }
   }
-
   return [...nodes, ...edges];
 }
 
@@ -374,7 +383,7 @@ function bfs(graph, source, sink, parent) {
 
 // --- Implémentation de Ford-Fulkerson
 // --- Enhanced Ford-Fulkerson with detailed edge information
-function fordFulkersonEnhanced(graph, source, sink) {
+function fordFulkerson(graph, source, sink) {
   const graphCopy = cloneGraph(graph);
   const parent = {};
   const allPaths = [];
@@ -562,14 +571,369 @@ function findCriticalPath(originalGraph, maxFlowGraph, source, sink) {
   };
 }
 
+class FlotComplet {
+  constructor() {
+      this.capacites = new Map();
+      this.flux = new Map();
+      this.capacitesResiduelles = new Map();
+      this.sommets = new Set();
+      this.arcs = [];
+      this.etapes = [];
+      this.source = null;
+      this.puits = null;
+  }
+
+  // Initialiser le réseau à partir des données JSON
+  initialiserReseau(donnees) {
+      this.capacites.clear();
+      this.flux.clear();
+      this.capacitesResiduelles.clear();
+      this.sommets.clear();
+      this.arcs = [];
+      this.etapes = [];
+
+      this.source = donnees.source;
+      this.puits = donnees.sink;
+
+      // Ajouter les sommets
+      donnees.nodes.forEach(node => {
+          this.sommets.add(node.data.id);
+      });
+
+      // Ajouter les arcs
+      donnees.edges.forEach(edge => {
+          const origine = edge.data.source;
+          const destination = edge.data.target;
+          const capacite = parseInt(edge.data.capacity);
+          
+          this.ajouterArc(origine, destination, capacite);
+      });
+  }
+
+  // Ajouter un arc avec sa capacité
+  ajouterArc(origine, destination, capacite) {
+      const arc = `${origine}-${destination}`;
+      this.capacites.set(arc, capacite);
+      this.flux.set(arc, 0);
+      this.capacitesResiduelles.set(arc, capacite);
+      this.arcs.push({origine, destination, arc});
+  }
+
+  // Trouver un chemin simple passant par un arc donné
+  trouverCheminSimple(arcChoisi) {
+      const [origine, destination] = arcChoisi.split('-');
+      
+      // Chemin de la source à l'origine de l'arc
+      const cheminVersOrigine = this.bfs(this.source, origine);
+      // Chemin de la destination de l'arc vers le puits
+      const cheminVersDestination = this.bfs(destination, this.puits);
+      
+      if (cheminVersOrigine && cheminVersDestination) {
+          return [...cheminVersOrigine, destination, ...cheminVersDestination.slice(1)];
+      }
+      return null;
+  }
+
+  // Recherche en largeur (BFS) pour trouver un chemin
+  bfs(debut, fin) {
+      if (debut === fin) return [debut];
+      
+      const visite = new Set();
+      const queue = [{sommet: debut, chemin: [debut]}];
+      visite.add(debut);
+
+      while (queue.length > 0) {
+          const {sommet, chemin} = queue.shift();
+          
+          for (const arc of this.arcs) {
+              if (arc.origine === sommet && this.capacitesResiduelles.get(arc.arc) > 0) {
+                  if (arc.destination === fin) {
+                      return [...chemin, arc.destination];
+                  }
+                  
+                  if (!visite.has(arc.destination)) {
+                      visite.add(arc.destination);
+                      queue.push({
+                          sommet: arc.destination,
+                          chemin: [...chemin, arc.destination]
+                      });
+                  }
+              }
+          }
+      }
+      return null;
+  }
+
+  // Vérifier si un chemin est élémentaire (sans circuit)
+  estElementaire(chemin) {
+      const sommetsVisites = new Set();
+      for (const sommet of chemin) {
+          if (sommetsVisites.has(sommet)) {
+              return false;
+          }
+          sommetsVisites.add(sommet);
+      }
+      return true;
+  }
+
+  // Mettre à jour les flux sur un chemin
+  mettreAJourFlux(chemin, fluxAAjouter) {
+      for (let i = 0; i < chemin.length - 1; i++) {
+          const arc = `${chemin[i]}-${chemin[i + 1]}`;
+          if (this.capacites.has(arc)) {
+              this.flux.set(arc, this.flux.get(arc) + fluxAAjouter);
+              this.capacitesResiduelles.set(arc, this.capacites.get(arc) - this.flux.get(arc));
+          }
+      }
+  }
+
+  // Trouver l'arc de capacité résiduelle la plus faible
+  trouverArcCapaciteMinimale() {
+      let arcMin = null;
+      let capaciteMin = Infinity;
+      
+      for (const [arc, capacite] of this.capacitesResiduelles) {
+          if (capacite > 0 && capacite < capaciteMin) {
+              capaciteMin = capacite;
+              arcMin = arc;
+          }
+      }
+      
+      return {arc: arcMin, capacite: capaciteMin};
+  }
+
+  // Vérifier si le flot est complet
+  estFlotComplet() {
+      // Un flot est complet si tout chemin de la source au puits contient au moins un arc saturé
+      return this.bfs(this.source, this.puits) === null;
+  }
+
+  // Enregistrer l'état actuel du réseau
+  enregistrerEtat(numeroEtape, arcChoisi = null, chemin = null, action = null) {
+      const arcsEtat = this.arcs.map(arc => ({
+          arc: arc.arc,
+          origine: arc.origine,
+          destination: arc.destination,
+          capacite: this.capacites.get(arc.arc),
+          flux: this.flux.get(arc.arc),
+          capaciteResiduelle: this.capacitesResiduelles.get(arc.arc),
+          estSature: this.capacitesResiduelles.get(arc.arc) === 0
+      }));
+
+      const etat = {
+          etape: numeroEtape,
+          arcChoisi: arcChoisi,
+          chemin: chemin,
+          action: action,
+          arcs: arcsEtat,
+          estComplet: this.estFlotComplet(),
+          fluxTotal: this.calculerFluxTotal()
+      };
+      
+      this.etapes.push(etat);
+      return etat;
+  }
+
+  // Calculer le flux total sortant de la source
+  calculerFluxTotal() {
+      let fluxTotal = 0;
+      for (const arc of this.arcs) {
+          if (arc.origine === this.source) {
+              fluxTotal += this.flux.get(arc.arc);
+          }
+      }
+      return fluxTotal;
+  }
+
+  // Algorithme principal de Manuel Bloch
+  algorithmeManuelBloch() {
+      this.etapes = [];
+      
+      // Initialisation
+      this.enregistrerEtat(0, null, null, 'Initialisation - tous les flux à 0');
+      
+      let numeroEtape = 1;
+      
+      while (!this.estFlotComplet()) {
+          // Choisir l'arc de capacité résiduelle la plus faible
+          const {arc: arcChoisi, capacite: capaciteMin} = this.trouverArcCapaciteMinimale();
+          
+          if (!arcChoisi) {
+              this.enregistrerEtat(numeroEtape, null, null, 'Aucun arc praticable trouvé - arrêt');
+              break;
+          }
+          
+          // Trouver un chemin simple passant par cet arc
+          const chemin = this.trouverCheminSimple(arcChoisi);
+          
+          if (!chemin) {
+              // Bloquer l'arc en le saturant
+              this.capacitesResiduelles.set(arcChoisi, 0);
+              this.enregistrerEtat(numeroEtape, arcChoisi, null, 'Arc bloqué - aucun chemin trouvé');
+              numeroEtape++;
+              continue;
+          }
+          
+          if (this.estElementaire(chemin)) {
+              // Chemin élémentaire - faire passer le flux
+              this.mettreAJourFlux(chemin, capaciteMin);
+              this.enregistrerEtat(numeroEtape, arcChoisi, chemin, `Flux de ${capaciteMin} ajouté sur le chemin`);
+          } else {
+              // Chemin non élémentaire - bloquer l'arc de capacité la plus faible du circuit
+              this.capacitesResiduelles.set(arcChoisi, 0);
+              this.enregistrerEtat(numeroEtape, arcChoisi, chemin, 'Chemin non élémentaire - arc bloqué');
+          }
+          
+          numeroEtape++;
+          
+          // Sécurité pour éviter les boucles infinies
+          if (numeroEtape > 1000) {
+              this.enregistrerEtat(numeroEtape, null, null, 'Arrêt de sécurité - trop d\'itérations');
+              break;
+          }
+      }
+      
+      return {
+          success: true,
+          fluxTotal: this.calculerFluxTotal(),
+          nombreEtapes: this.etapes.length - 1, // -1 pour ne pas compter l'initialisation
+          etapes: this.etapes,
+          parametres: {
+              source: this.source,
+              sink: this.puits,
+              nombreSommets: this.sommets.size,
+              nombreArcs: this.arcs.length
+          }
+      };
+  }
+}
+
+// Fonction principale pour traiter les données
+function calculerFlotComplet(donnees) {
+  try {
+      const flot = new FlotComplet();
+      flot.initialiserReseau(donnees);
+      return flot.algorithmeManuelBloch();
+  } catch (error) {
+      return {
+          success: false,
+          error: error.message,
+          stack: error.stack
+      };
+  }
+}
+
+function validateFlow(graph, source, sink) {
+  const issues = [];
+  
+  for (const from in graph) {
+    for (const to in graph[from]) {
+      const edge = graph[from][to];
+      if (edge.capacity > 0) {
+        // Check if flow exceeds capacity
+        if (edge.flow > edge.capacity) {
+          issues.push(`Flow ${edge.flow} exceeds capacity ${edge.capacity} on edge ${from}->${to}`);
+        }
+        
+        // Check if flow is negative on original edges
+        if (edge.flow < 0) {
+          issues.push(`Negative flow ${edge.flow} on original edge ${from}->${to}`);
+        }
+      }
+    }
+  }
+  
+  // Check flow conservation (except for source and sink)
+  for (const node in graph) {
+    if (node !== source && node !== sink) {
+      let inFlow = 0;
+      let outFlow = 0;
+      
+      for (const from in graph) {
+        if (graph[from][node] && graph[from][node].capacity > 0) {
+          inFlow += Math.max(0, graph[from][node].flow);
+        }
+      }
+      
+      for (const to in graph[node]) {
+        if (graph[node][to].capacity > 0) {
+          outFlow += Math.max(0, graph[node][to].flow);
+        }
+      }
+      
+      if (Math.abs(inFlow - outFlow) > 0.001) {
+        issues.push(`Flow conservation violated at node ${node}: in=${inFlow}, out=${outFlow}`);
+      }
+    }
+  }
+  
+  return issues;
+}
+
+function processFlowWithValidation(initialGraph, source, sink) {
+  try {
+    const blochResult = manuelBlochSystematic(initialGraph, source, sink, []);
+    
+    // Validate the result
+    const validationIssues = validateFlow(blochResult.graph, source, sink);
+    if (validationIssues.length > 0) {
+      console.warn('Flow validation issues:', validationIssues);
+    }
+    
+    // Generate safe outputs
+    const updatedCapacities = graphWithUpdatedCapacities(blochResult.graph, initialGraph);
+    const usedFlow = graphWithUsedFlow(blochResult.graph, initialGraph);
+    
+    return {
+      success: true,
+      graph: blochResult.graph,
+      choices: blochResult.choices,
+      updatedCapacities,
+      usedFlow,
+      validationIssues
+    };
+    
+  } catch (error) {
+    console.error('Error in flow processing:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Route principale pour calculer le flot complet
+app.post('/flot-complet', (req, res) => {
+  try {
+      const donnees = req.body;
+      
+      // Validation des données
+      if (!donnees.source || !donnees.sink || !donnees.nodes || !donnees.edges) {
+          return res.status(400).json({
+              success: false,
+              error: 'Données invalides. Champs requis: source, sink, nodes, edges'
+          });
+      }
+      
+      const resultat = calculerFlotComplet(donnees);
+      res.json(resultat);
+  } catch (error) {
+      res.status(500).json({
+          success: false,
+          error: 'Erreur interne du serveur',
+          details: error.message
+      });
+  }
+});
+
 // --- Route principale
 app.post('/maxflow', (req, res) => {
   const { nodes, edges, source, sink } = req.body;
-
+  
   if (!nodes || !edges || !source || !sink) {
     return res.status(400).json({ error: "Champs requis : nodes, edges, source, sink" });
   }
-
+  
   try {
     // Nettoyer le cache pour chaque nouvelle requête
     pathCache.clear();
@@ -579,12 +943,24 @@ app.post('/maxflow', (req, res) => {
     // Use Manuel Bloch for complete flow
     const blochResult = manuelBlochSystematic(initialGraph, source, sink, []);
     
+    // Validate Manuel Bloch result to prevent negative numbers
+    const blochValidation = validateFlow(blochResult.graph, source, sink);
+    if (blochValidation.length > 0) {
+      console.warn('Manuel Bloch validation issues:', blochValidation);
+    }
+    
     // Use enhanced Ford-Fulkerson for detailed max flow analysis
-    const fordResult = fordFulkersonEnhanced(cloneGraph(initialGraph), source, sink);
+    const fordResult = fordFulkerson(cloneGraph(initialGraph), source, sink);
+    
+    // Validate Ford-Fulkerson result
+    const fordValidation = validateFlow(fordResult.graph, source, sink);
+    if (fordValidation.length > 0) {
+      console.warn('Ford-Fulkerson validation issues:', fordValidation);
+    }
     
     // Calculer le chemin critique
     const criticalPath = findCriticalPath(initialGraph, fordResult.graph, source, sink);
-
+    
     return res.json({
       maxFlow: fordResult.maxFlow,
       graph_initial: [...nodes, ...edges],
@@ -601,12 +977,18 @@ app.post('/maxflow', (req, res) => {
       maxFlowNodes: fordResult.maxFlowNodes,
       maxFlowValue: fordResult.maxFlowValue,
       criticalNodes: fordResult.criticalNodes,
-      allAugmentingPaths: fordResult.allPaths
+      allAugmentingPaths: fordResult.allPaths,
+      
+      // Add validation info for debugging
+      validation: {
+        bloch_issues: blochValidation,
+        ford_issues: fordValidation
+      }
     });
   } catch (error) {
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: "Erreur lors du calcul du flot maximal",
-      details: error.message 
+      details: error.message
     });
   }
 });
