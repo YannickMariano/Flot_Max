@@ -2,7 +2,8 @@
 <html>
 <head>
   <title>Maximum Flow Visualizer</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/tableau.css">
   <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
 </head>
@@ -24,48 +25,76 @@
     <button id="calculate-btn" onclick="calculateMaxFlow()">Calculer le Flot Max</button>
     <button id="deleteNode-btn" onclick="deleteNode()">Supprimer le Noeud</button>
   </div>
-  
- <div id="legend">
-  <div class="legend-header">
-    <span style="font-size:18px;vertical-align:middle;">🎨</span> Légende
-  </div>
-  <div class="legend-list">
-    <div class="legend-item"><span class="color-box source"></span> <span class="legend-label">Début</span></div>
-    <div class="legend-item"><span class="color-box sink"></span> <span class="legend-label">Fin</span></div>
-    <div class="legend-item"><span class="color-box critical"></span> <span class="legend-label">Chemin Critique</span></div>
-    <div class="legend-item"><span class="color-box flow-node"></span> <span class="legend-label">Flux</span></div>
-    <div class="legend-item"><span class="color-box max-path"></span> <span class="legend-label">Flot Max</span></div>
-    <div class="legend-item"><span class="color-box saturated"></span> <span class="legend-label">Arc saturé</span></div>
-    <div class="legend-item"><span class="color-box bottleneck"></span> <span class="legend-label">Arc bloqué/inutilisé</span></div>
-  </div>
-</div>
-  
-  <div class="card" id="original-graph-card">
-    <h2>GRAPH INITIAL</h2>
-    <div id="cy-original"></div>
+
+  <div id="legend">
+    <div class="legend-header">
+      <span style="font-size:18px;vertical-align:middle;">🎨</span> Légende
+    </div>
+    <div class="legend-list">
+      <div class="legend-item"><span class="color-box source"></span> <span class="legend-label">Début</span></div>
+      <div class="legend-item"><span class="color-box sink"></span> <span class="legend-label">Fin</span></div>
+      <div class="legend-item"><span class="color-box critical"></span> <span class="legend-label">Chemin Critique</span></div>
+      <div class="legend-item"><span class="color-box flow-node"></span> <span class="legend-label">Flux</span></div>
+      <div class="legend-item"><span class="color-box max-path"></span> <span class="legend-label">Flot Max</span></div>
+      <div class="legend-item"><span class="color-box saturated"></span> <span class="legend-label">Arc saturé</span></div>
+      <div class="legend-item"><span class="color-box bottleneck"></span> <span class="legend-label">Arc bloqué/inutilisé</span></div>
+    </div>
   </div>
 
-  <div class="card" id="flot-complet-graph-card">
-  <h2>FLOT COMPLET</h2>
-  <div class="navigation">
-    <button onclick="previousFlotComplet()">←</button>
-    <span id="flot-complet-index"></span>
-    <button onclick="nextFlotComplet()">→</button>
+  <div class="section-wrapper bg-initial">
+    <div class="card" id="original-graph-card">
+      <h2>GRAPH INITIAL</h2>
+      <div id="cy-original"></div>
+    </div>
   </div>
-  <div id="cy-flot-complet"></div>
-</div>
 
-<div class="card" id="flot-max-graph-card">
-  <h2>FLOT MAX</h2>
-  <div class="navigation">
-    <button onclick="previousFlotMax()">←</button>
-    <span id="flot-max-index"></span>
-    <button onclick="nextFlotMax()">→</button>
+  <div class="section-wrapper bg-flot-complet">
+    <div class="card" id="flot-complet-graph-card">
+      <h2>FLOT COMPLET</h2>
+      <div class="navigation">
+        <button onclick="previousFlotComplet()">←</button>
+        <span id="flot-complet-index"></span>
+        <button onclick="nextFlotComplet()">→</button>
+      </div>
+      <div id="cy-flot-complet"></div>
+    </div>
   </div>
-  <div id="cy-flot-max"></div>
-</div>
 
-  
-  <script src="app.js"></script>
+  <div class="section-wrapper bg-flot-max">
+    <div class="card" id="flot-max-graph-card">
+      <h2>FLOT MAX</h2>
+      <div class="navigation">
+        <button onclick="previousFlotMax()">←</button>
+        <span id="flot-max-index"></span>
+        <button onclick="nextFlotMax()">→</button>
+      </div>
+      <div id="cy-flot-max"></div>
+    </div>
+  </div>
+
+  <!-- SECTION TABLEAU Manuel Bloch -->
+  <div class="section-wrapper bg-tableau">
+    <div id="tableau-section" class="card">
+      <div class="header">
+        <h1>Tableau de suivi des etapes</h1>
+        <p>Recherche de flot complet dans un réseau de transport</p>
+      </div>
+
+      <div class="input-section">
+        <button class="btn" onclick="voirtableau()">📊 VoirTableau</button>
+      </div>
+
+      <div id="results" class="results hidden">
+        <div id="summary" class="summary"></div>
+        <div id="stepNavigation" class="step-navigation"></div>
+        <div id="tableContainer" class="table-container"></div>
+      </div>
+
+      <div id="error" class="error hidden"></div>
+    </div>
+  </div>
+
+  <script src="js/index.js"></script>
+  <script src="js/tab.js"></script>
 </body>
 </html>

@@ -939,5 +939,12 @@ function handleNodeClick(event) {
   }
 }
 
-
+// Permet d’appeler la fonction de tableau si elle existe dans tab.js
+function voirtableau() {
+  if (typeof window.voirtableau === 'function') {
+    window.voirtableau();
+  } else {
+    console.error("⚠️ La fonction 'voirtableau' n'est pas définie.");
+  }
+}
 
