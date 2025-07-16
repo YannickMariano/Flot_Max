@@ -317,35 +317,36 @@ function creerNavigationEtapes(etapes) {
 
 function afficherTableau(etape) {
     const tableContainer = document.getElementById('tableContainer');
-    
+
     let html = `
+        <div class="etat-infos">
+            <p><strong>🔁 Arc choisi :</strong> ${etape.arcChoisi ? `<span class="arc-choisi">${etape.arcChoisi}</span>` : 'Aucun'}</p>
+            <p><strong>🛤️ Chemin :</strong> ${etape.chemin ? `<span class="chemin">${etape.chemin.join(' → ')}</span>` : 'Non trouvé'}</p>
+        </div>
+
         <table>
             <thead>
                 <tr>
                     <th rowspan="2">Étape</th>
-                    <th rowspan="2">Arc choisi</th>
-                    <th rowspan="2">Chemin</th>
                     <th rowspan="2">Action</th>
                     <th colspan="${etape.arcs.length}">État des arcs</th>
                     <th rowspan="2">Flux total</th>
                     <th rowspan="2">Statut</th>
                 </tr>
-                <tr>
-    `;
-    
+                <tr>`;
+
     // En-têtes pour chaque arc
     etape.arcs.forEach(arc => {
         html += `<th>${arc.arc}<br><small>C: ${arc.capacite}</small></th>`;
     });
+
     html += `</tr></thead><tbody>`;
-    
+
     // Ligne de l'étape
     html += `<tr>`;
     html += `<td class="etape-cell">${etape.etape}</td>`;
-    html += `<td>${etape.arcChoisi ? `<span class="arc-choisi">${etape.arcChoisi}</span>` : '-'}</td>`;
-    html += `<td>${etape.chemin ? `<span class="chemin">${etape.chemin.join(' → ')}</span>` : '-'}</td>`;
     html += `<td class="action-cell">${etape.action || '-'}</td>`;
-    
+
     // État de chaque arc
     etape.arcs.forEach(arc => {
         const classe = arc.estSature ? 'arc-sature' : 'arc-normal';
@@ -354,13 +355,14 @@ function afficherTableau(etape) {
             <div class="capacite-value">(${arc.capaciteResiduelle})</div>
         </td>`;
     });
-    
+
     html += `<td class="flux-value">${etape.fluxTotal}</td>`;
     html += `<td>${etape.estComplet ? '✅ Complet' : '⏳ En cours'}</td>`;
     html += `</tr></tbody></table>`;
-    
+
     tableContainer.innerHTML = html;
 }
+
 
 function voirtableau() {
     try {

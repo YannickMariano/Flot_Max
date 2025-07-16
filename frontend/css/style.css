@@ -31,9 +31,9 @@ html, body {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
-  z-index: 999;
+  
   width: 80%;
-  max-width: 800px;
+  max-width: 1000px;
   margin-top: 100px; 
 }
 
@@ -56,6 +56,8 @@ html, body {
 
 #tableau-section {
   top: 1660px;
+ 
+  transform: translateX(-50%);
   margin-bottom: 50px;
   background-color: #fff1d7; 
 }
@@ -73,7 +75,7 @@ html, body {
     .bg-initial { background-color: #efefef; padding: 335px; }
     .bg-flot-complet { background-color: #fff4e2; padding: 270px; }
     .bg-flot-max { background-color: #ffe7e7; padding: 258px;}
-    .bg-tableau { background-color: #faffe9; padding: 258px;}
+    .bg-tableau { background-color: #faffe9; padding: 480px;}
 
 #controls {
   position: absolute;

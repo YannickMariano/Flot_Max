@@ -17,7 +17,7 @@ body {
 .header {
     background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
     color: white;
-    padding: 30px;
+    padding: 20px;
     text-align: center;
 }
 
@@ -110,10 +110,28 @@ textarea:focus {
 
 .summary-item {
     background: white;
-    padding: 15px;
+    padding: 9px;
     border-radius: 8px;
     text-align: center;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.step-navigation {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.step-btn {
+    color: #2c3e50;
+    padding: 8px 16px;
+    background: #ecf0f1;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    
 }
 
 .summary-value {
@@ -145,7 +163,7 @@ table {
 th {
     background: linear-gradient(135deg, #34495e, #2c3e50);
     color: white;
-    padding: 15px 8px;
+    padding: 9px 5px;
     text-align: center;
     font-weight: 600;
     position: sticky;
@@ -154,7 +172,7 @@ th {
 }
 
 td {
-    padding: 12px 8px;
+    padding: 12px 20px;
     text-align: center;
     border-bottom: 1px solid #eee;
     vertical-align: middle;
@@ -172,16 +190,28 @@ tr:hover {
 }
 
 .arc-choisi {
-    background: #e74c3c;
-    color: white;
+    color: rgb(214, 27, 27);
     font-weight: bold;
     border-radius: 4px;
     padding: 4px 8px;
 }
 
+.etat-infos {
+  margin-bottom: 12px;
+  background: #f9f9f9;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border-left: 4px solid #4caf50;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.etat-infos p {
+  margin: 4px 0;
+  font-size: 15px;
+}
+
 .chemin {
-    background: #2ecc71;
-    color: white;
+    color: rgb(18, 173, 59);
     font-weight: bold;
     border-radius: 4px;
     padding: 4px 8px;
@@ -224,23 +254,6 @@ tr:hover {
     display: none;
 }
 
-.step-navigation {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin: 20px 0;
-}
-
-.step-btn {
-    color: #2c3e50;
-    padding: 8px 16px;
-    background: #ecf0f1;
-    border: 1px solid #bdc3c7;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
 .step-btn:hover {
     background: #d5dbdb;
 }
@@ -251,7 +264,7 @@ tr:hover {
     border-color: #3498db;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
     .container {
         margin: 10px;
     }
