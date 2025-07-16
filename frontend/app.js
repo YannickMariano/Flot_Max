@@ -3,60 +3,60 @@ let flotCompletIndex = 0;
 
 let flotMaxSolutions = [];
 let flotMaxIndex = 0;
+let allCombinations = []; 
+const nodePositionsCache = new Map(); // key: node.id, value: { x, y }
+
+
+// Variables globales pour stocker les données
+let allCombinationsData = null;
+let currentCombinationIndex = 0;
+let currentFlotCompletIndex = 0;
+let currentFlotMaxIndex = 0;
+let index = 0;
+
 
 
 // ################# SLIDERS ##################
+// function showFlotComplet(index) {
+//   flotCompletIndex = index;
+//   document.getElementById('flot-complet-index').textContent = `Solution ${index + 1}/${flotCompletSolutions.length}`;
+//   loadCompleteFlowGraph({
+//     graph_after_bloch: flotCompletSolutions[index].graph_flot_complet
+//   });
+// }
 
-function showInitialGraph(index) {
-  if (flotCompletSolutions.length === 0) return;
-  const solution = flotCompletSolutions[index];
-  loadInitialGraph(solution);
-}
+// function previousFlotComplet() {
+//   if (flotCompletIndex > 0) {
+//     showFlotComplet(flotCompletIndex - 1);
+//   }
+// }
 
-function showFlotComplet(index) {
-  flotCompletIndex = index;
-  document.getElementById('flot-complet-index').textContent = `Solution ${index + 1}/${flotCompletSolutions.length}`;
-  loadCompleteFlowGraph({
-    graph_after_bloch: flotCompletSolutions[index].graph_after_bloch,
-    bottleneckEdges: flotCompletSolutions[index].chemin_critique?.bottleneck_edges?.map(e => {
-      const [from, to] = e.split("->");
-      return { from, to };
-    })
-  });
-}
+// function nextFlotComplet() {
+//   if (flotCompletIndex < flotCompletSolutions.length - 1) {
+//     showFlotComplet(flotCompletIndex + 1);
+//   }
+// }
 
-function previousFlotComplet() {
-  if (flotCompletIndex > 0) {
-    showFlotComplet(flotCompletIndex - 1);
-    showInitialGraph(flotCompletIndex);
-  }
-}
+// function showFlotMax(index) {
+//   flotMaxIndex = index;
+//   document.getElementById('flot-max-index').textContent = `Solution ${index + 1}/${flotMaxSolutions.length}`;
+//   loadMaxFlowGraph({
+//     otherGraph: flotMaxSolutions[index].graph_flot_max
+//   });
+// }
 
-function nextFlotComplet() {
-  if (flotCompletIndex < flotCompletSolutions.length - 1) {
-    showFlotComplet(flotCompletIndex + 1);
-    showInitialGraph(flotCompletIndex);
-  }
-}
+// function previousFlotMax() {
+//   if (flotMaxIndex > 0) {
+//     showFlotMax(flotMaxIndex - 1);
+//   }
+// }
 
+// function nextFlotMax() {
+//   if (flotMaxIndex < flotMaxSolutions.length - 1) {
+//     showFlotMax(flotMaxIndex + 1);
+//   }
+// }
 
-function showFlotMax(index) {
-  flotMaxIndex = index;
-  document.getElementById('flot-max-index').textContent = `Solution ${index + 1}/${flotMaxSolutions.length}`;
-  loadMaxFlowGraph(flotMaxSolutions[index]);
-}
-
-function previousFlotMax() {
-  if (flotMaxIndex > 0) {
-    showFlotMax(flotMaxIndex - 1);
-  }
-}
-
-function nextFlotMax() {
-  if (flotMaxIndex < flotMaxSolutions.length - 1) {
-    showFlotMax(flotMaxIndex + 1);
-  }
-}
 
 
 // ################# INITIALISATION DU PAGE ##################
@@ -165,24 +165,14 @@ function loadInitialGraph(data) {
     return;
   }
 
-  cy.elements().remove(); 
-  cy.add(data.graph_initial);
-  cy.style()
-  .selector('node')
-  .style({ 'transition-property': 'none' })
-  .update(); 
+  cy.elements().remove(); // Clear existing elements in first graph
+  cy.add(data.graph_initial); // Add initial graph elements
 
   cy.layout({
     name: 'breadthfirst',
     directed: true,
-    padding: 30,
-    spacingFactor: 1.2,
-    avoidOverlap: true,
-    animate: false
+    padding: 30
   }).run();
-
-  cy.zoom(1);    // Optional: fixed zoom
-  cy.center();
 
   cy.fit();
 }
@@ -194,22 +184,27 @@ function loadCompleteFlowGraph(data) {
     return;
   }
 
-  // 1. Clear previous elements
-  cyCompleteGraph.elements().remove();
-  cyCompleteGraph.style()
-    .selector('node')
-    .style({ 'transition-property': 'none' })
-    .update();
+  // 1. Cache current zoom/pan to restore after update (optional)
+  const zoom = cyCompleteGraph.zoom();
+  const pan = cyCompleteGraph.pan();
 
-  // 2. Add new graph
+  // 2. Clear previous elements
+  cyCompleteGraph.elements().remove();
+
+  // 3. Add elements
   cyCompleteGraph.add(data.graph_after_bloch);
 
-  // 3. Style flow edges
+  // 4. Restore node positions if cached
+  cyCompleteGraph.nodes().forEach(node => {
+    const pos = nodePositionsCache.get(node.id());
+    if (pos) node.position(pos);
+  });
+
+  // 5. Style flow edges
   data.flowEdges?.forEach(edge => {
-    const cyEdge = cyCompleteGraph.edges().filter(e =>
+    cyCompleteGraph.edges().filter(e =>
       e.data('source') === edge.from && e.data('target') === edge.to
-    );
-    cyEdge.forEach(e => {
+    ).forEach(e => {
       const capacity = e.data('capacity');
       e.data('label', `${capacity}`);
       e.addClass('flow-edge');
@@ -220,37 +215,39 @@ function loadCompleteFlowGraph(data) {
     });
   });
 
-  // 4. Style saturated edges
+  // 6. Style saturated edges
   data.saturatedEdges?.forEach(segment => {
     cyCompleteGraph.edges().filter(e =>
       e.data('source') === segment.from && e.data('target') === segment.to
     ).addClass('saturated');
   });
 
-  // 5. Style bottlenecks
-  if (data.bottleneckEdges) {
-    data.bottleneckEdges.forEach(segment => {
-      cyCompleteGraph.edges().filter(e =>
-        e.data('source') === segment.from && e.data('target') === segment.to
-      ).addClass('bottleneck');
+  // 7. Style bottlenecks
+  data.bottleneckEdges?.forEach(segment => {
+    cyCompleteGraph.edges().filter(e =>
+      e.data('source') === segment.from && e.data('target') === segment.to
+    ).addClass('bottleneck');
+  });
+
+  // 8. Layout only if first time (i.e., cache is empty)
+  if (nodePositionsCache.size === 0) {
+    cyCompleteGraph.layout({
+      name: 'breadthfirst',
+      directed: true,
+      padding: 30
+    }).run();
+
+    // Cache node positions
+    cyCompleteGraph.nodes().forEach(node => {
+      nodePositionsCache.set(node.id(), node.position());
     });
   }
 
-   // Fixed layout and zoom
-   cyCompleteGraph.layout({
-    name: 'breadthfirst',
-    directed: true,
-    padding: 30,
-    spacingFactor: 1.2,
-    avoidOverlap: true,
-    animate: false
-  }).run();
-
-  cyCompleteGraph.zoom(1);    
-  cyCompleteGraph.center();
-
-  cyCompleteGraph.fit();
+  // 9. Restore zoom/pan
+  cyCompleteGraph.zoom(zoom);
+  cyCompleteGraph.pan(pan);
 }
+
 
 function loadMaxFlowGraph(data) {
   if (!data || !Array.isArray(data.graph_after_ford)) {
@@ -258,113 +255,81 @@ function loadMaxFlowGraph(data) {
     return;
   }
 
-  cyFinalGraph.style()
-    .selector('node')
-    .style({ 'transition-property': 'none' })
-    .update();
+  const zoom = cyFinalGraph.zoom();
+  const pan = cyFinalGraph.pan();
 
-  // 1. Clear previous elements
   cyFinalGraph.elements().remove();
-
-  // 2. Add final graph (Ford-Fulkerson output)
   cyFinalGraph.add(data.graph_after_ford);
 
-  // 5. Style bottlenecks
-  if (data.bottleneckEdges) {
-    data.bottleneckEdges.forEach(segment => {
-      cyFinalGraph.edges().filter(e =>
-        e.data('source') === segment.from && e.data('target') === segment.to
-      ).addClass('bottleneck');
-    });
-  }
+  cyFinalGraph.nodes().forEach(node => {
+    const pos = nodePositionsCache.get(node.id());
+    if (pos) node.position(pos);
+  });
 
-  // 6. Highlight max flow path (if any)
-  if (data.maxFlowPath && data.maxFlowPath.length > 0) {
-    data.maxFlowPath.forEach(segment => {
-      cyFinalGraph.edges().filter(e =>
-        e.data('source') === segment.from && e.data('target') === segment.to
-      ).addClass('maxflow-path');
-    });
+  // Style bottlenecks
+  data.bottleneckEdges?.forEach(segment => {
+    cyFinalGraph.edges().filter(e =>
+      e.data('source') === segment.from && e.data('target') === segment.to
+    ).addClass('bottleneck');
+  });
 
-    if (data.maxFlowNodes) {
-      data.maxFlowNodes.forEach(nodeId => {
-        cyFinalGraph.getElementById(nodeId).addClass('max-path-node');
-      });
-    }
-  }
+  // Max flow path
+  data.maxFlowPath?.forEach(segment => {
+    cyFinalGraph.edges().filter(e =>
+      e.data('source') === segment.from && e.data('target') === segment.to
+    ).addClass('maxflow-path');
+  });
 
-  // 7. Critical nodes
-  if (data.criticalNodes) {
-    data.criticalNodes.forEach(nodeId => {
-      cyFinalGraph.getElementById(nodeId).addClass('critical-node');
-    });
-  }
+  data.maxFlowNodes?.forEach(nodeId => {
+    cyFinalGraph.getElementById(nodeId).addClass('max-path-node');
+  });
 
-  // 8. Flow nodes (nodes used in any flow)
+  data.criticalNodes?.forEach(nodeId => {
+    cyFinalGraph.getElementById(nodeId).addClass('critical-node');
+  });
+
   const flowNodes = new Set();
   data.flowEdges?.forEach(edge => {
-    const cyEdge = cyCompleteGraph.edges().filter(e =>
-      e.data('source') === edge.from && e.data('target') === edge.to
-    );
-    cyEdge.forEach(e => {
-      const capacity = e.data('capacity');
-      e.data('label', `${capacity}`);
-      e.addClass('flow-edge');
-  
-      if (edge.flow === capacity) {
-        e.addClass('saturated');
-      } else if (edge.flow < capacity) {
-        e.addClass('blocked');
-      }
-    });
+    flowNodes.add(edge.from);
+    flowNodes.add(edge.to);
   });
-  
 
   flowNodes.forEach(nodeId => {
-    if (!cyFinalGraph.getElementById(nodeId).hasClass('critical-node')) {
-      cyFinalGraph.getElementById(nodeId).addClass('flow-node');
+    const el = cyFinalGraph.getElementById(nodeId);
+    if (!el.hasClass('critical-node')) {
+      el.addClass('flow-node');
     }
   });
 
-
   data.flowEdges?.forEach(edge => {
-    const cyEdge = cyFinalGraph.edges().filter(e =>
+    cyFinalGraph.edges().filter(e =>
       e.data('source') === edge.from && e.data('target') === edge.to
-    );
-    cyEdge.forEach(e => {
+    ).forEach(e => {
       const capacity = e.data('capacity');
       e.data('label', `${capacity}`);
       e.addClass('flow-edge');
-
     });
   });
 
+  // Apply layout once if positions not cached
+  if (nodePositionsCache.size === 0) {
+    cyFinalGraph.layout({
+      name: 'breadthfirst',
+      directed: true,
+      padding: 30
+    }).run();
 
-  console.log("✅ Saturated edges:", data.saturatedEdges);
-  console.log("✅ Flow edges:", data.flowEdges);
+    // Cache positions
+    cyFinalGraph.nodes().forEach(node => {
+      nodePositionsCache.set(node.id(), node.position());
+    });
+  }
 
-  // 9. Layout
-   // Fixed layout and zoom
-   cyFinalGraph.layout({
-    name: 'breadthfirst',
-    directed: true,
-    padding: 30,
-    spacingFactor: 1.2,
-    avoidOverlap: true,
-    animate: false
-  }).run();
-
-  cyFinalGraph.zoom(1);    // Optional: fixed zoom
-  cyFinalGraph.center();
-
-  cyFinalGraph.fit();
+  cyFinalGraph.zoom(zoom);
+  cyFinalGraph.pan(pan);
 }
+
  
-
-
-
-
-
 // Attach to Cytoscape events
 cy.on("tap", (event) => handleBackgroundClick(event));
 cy.on("tap", "node", (event) => handleNodeClick(event));
@@ -384,115 +349,169 @@ function calculateMaxFlow() {
   const elements = cy.elements().jsons();
   const nodes = elements.filter(e => e.group === 'nodes');
   const edges = elements.filter(e => e.group === 'edges');
-
+  
+  // Get source and sink from the dropdown selects
   const sourceSelect = document.getElementById('source-select');
   const sinkSelect = document.getElementById('sink-select');
-
+  
   const source = sourceSelect.value;
   const sink = sinkSelect.value;
-
+  
+  // Validate selection
   if (source === sink) {
     alert("Source and sink cannot be the same node");
     return;
   }
-
+  
+  // Check if source and sink exist in the graph
   const sourceNode = cy.getElementById(source);
   const sinkNode = cy.getElementById(sink);
-
+  
   if (sourceNode.length === 0 || sinkNode.length === 0) {
     alert("Selected source or sink node doesn't exist in the graph");
     return;
   }
-
+  
+  // Reset styles
   cy.nodes().removeClass('flow-node source sink max-path-node critical-node');
   cy.edges().removeClass('maxflow-path saturated flow-edge bottleneck');
+  
+  // Mark source and sink
   sourceNode.addClass('source');
   sinkNode.addClass('sink');
-
+  
   const loadingMsg = document.createElement('div');
   loadingMsg.textContent = 'Calculating max flow...';
-  Object.assign(loadingMsg.style, {
-    position: 'absolute',
-    top: '60px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    padding: '10px 20px',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    color: 'white',
-    borderRadius: '5px',
-    zIndex: '1000'
-  });
+  loadingMsg.style.position = 'absolute';
+  loadingMsg.style.top = '60px';
+  loadingMsg.style.left = '50%';
+  loadingMsg.style.transform = 'translateX(-50%)';
+  loadingMsg.style.padding = '10px 20px';
+  loadingMsg.style.backgroundColor = 'rgba(0,0,0,0.7)';
+  loadingMsg.style.color = 'white';
+  loadingMsg.style.borderRadius = '5px';
+  loadingMsg.style.zIndex = '1000';
   document.body.appendChild(loadingMsg);
-
-  const payload = JSON.stringify({ nodes, edges, source, sink });
-
-  Promise.all([
-    fetch('http://localhost:3000/maxflow', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload
-    }),
-    fetch('http://localhost:3000/all-combinations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload
-    })
-  ])
-    .then(async ([maxFlowRes, combinationsRes]) => {
-      if (!maxFlowRes.ok) throw new Error(`MaxFlow failed: ${maxFlowRes.status}`);
-      if (!combinationsRes.ok) throw new Error(`Combinations failed: ${combinationsRes.status}`);
-
-      const maxFlowData = await maxFlowRes.json();
-      const allCombData = await combinationsRes.json();
-
-      document.body.removeChild(loadingMsg);
-
-      // Préparation des données combinées
-      if (Array.isArray(allCombData.combinations) && allCombData.combinations.length > 0) {
-        flotCompletSolutions = allCombData.combinations.map(c => ({
-          id: c.id,
-          graph_initial: c.graph_initial,
-          graph_after_bloch: c.graph_after_bloch,
-          chemin_critique: c.chemin_critique
-        }));
-
-        flotMaxSolutions = allCombData.combinations.map(c => ({
-          id: c.id,
-          graph_after_ford: c.graph_after_ford,
-          chemin_critique: c.chemin_critique,
-          bottleneckEdges: c.chemin_critique?.bottleneck_edges?.map(e => {
-            const [from, to] = e.split("->");
-            return { from, to };
-          }) ?? [],
-          maxFlowPath: c.chemin_critique?.path_edges ?? [],
-          maxFlowNodes: [
-            ...new Set((c.chemin_critique?.path_edges || []).flatMap(e => [e.from, e.to]))
-          ]
-        }));
-
-        // Reset indexes
-        flotCompletIndex = 0;
-        flotMaxIndex = 0;
-
-        // Utiliser les fonctions avec index pour navigation
-        showInitialGraph(0);
-        showFlotComplet(0);
-        showFlotMax(0);
-      } else {
-        // Si pas de combinaison, on fallback avec les données directes
-        loadInitialGraph(maxFlowData);
-        loadCompleteFlowGraph(maxFlowData);
-        loadMaxFlowGraph(maxFlowData);
+  
+  fetch('http://localhost:3000/maxflow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nodes, edges, source, sink })
+  })
+    .then(res => {
+      if (!res.ok) {
+        throw new Error(`Server responded with ${res.status}`);
       }
+      return res.json();
+    })
+    .then(data => {
+      document.body.removeChild(loadingMsg);
+      console.log(data);
+      loadInitialGraph(data);
+      loadCompleteFlowGraph(data);
+      loadMaxFlowGraph(data);
+      
+      // Create a more detailed result box
+      const resultBox = document.createElement('div');
+      resultBox.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 5px;">Results:</div>
+        <div>Maximum Flow: ${data.maxFlow}</div>
+        ${data.maxFlowValue ? `<div>Max Path Flow: ${data.maxFlowValue}</div>` : ''}
+        ${data.criticalNodes ? `<div>Critical Nodes: ${data.criticalNodes.join(', ')}</div>` : ''}
+      `;
+      resultBox.style.position = 'absolute';
+      resultBox.style.top = '60px';
+      resultBox.style.left = '50%';
+      resultBox.style.transform = 'translateX(-50%)';
+      resultBox.style.padding = '10px 20px';
+      resultBox.style.backgroundColor = 'rgba(0,0,0,0.7)';
+      resultBox.style.color = 'white';
+      resultBox.style.borderRadius = '5px';
+      resultBox.style.zIndex = '1000';
+      document.body.appendChild(resultBox);
+      
+      setTimeout(() => {
+        document.body.removeChild(resultBox);
+      }, 6000);
+      
+      // // Update flow values on edges
+      // data.flowEdges.forEach(edge => {
+      //   const cyEdge = cy.edges().filter(e =>
+      //     e.data('source') === edge.from && e.data('target') === edge.to
+      //   );
+      //   cyEdge.forEach(e => {
+      //     const capacity = e.data('capacity');
+      //     e.data('label', `${edge.flow}/${capacity}`);
+      //     e.addClass('flow-edge');
+          
+      //     // Check if the edge is blocked/unused
+      //     if (edge.flow < capacity) {
+      //       e.addClass('blocked'); // Add the blocked class
+      //     }
+      //   });
+      // });
+      
+      // // Mark saturated edges
+      // data.saturatedEdges.forEach(segment => {
+      //   cy.edges().filter(e =>
+      //     e.data('source') === segment.from && e.data('target') === segment.to
+      //   ).addClass('saturated');
+      // });
+      
+      // // Mark bottleneck edges (edges with zero flow but positive capacity)
+      // if (data.bottleneckEdges) {
+      //   data.bottleneckEdges.forEach(segment => {
+      //     cy.edges().filter(e =>
+      //       e.data('source') === segment.from && e.data('target') === segment.to
+      //     ).addClass('bottleneck');
+      //   });
+      // }
+      
+      // // Highlight the path with maximum flow contribution
+      // if (data.maxFlowPath && data.maxFlowPath.length > 0) {
+      //   data.maxFlowPath.forEach(segment => {
+      //     cy.edges().filter(e =>
+      //       e.data('source') === segment.from && e.data('target') === segment.to
+      //     ).addClass('maxflow-path');
+      //   });
+        
+      //   if (data.maxFlowNodes) {
+      //     data.maxFlowNodes.forEach(nodeId => {
+      //       cy.getElementById(nodeId).addClass('max-path-node');
+      //     });
+      //   }
+      // }
+      
+      // // Highlight critical nodes that contribute most to the max flow
+      // if (data.criticalNodes) {
+      //   data.criticalNodes.forEach(nodeId => {
+      //     cy.getElementById(nodeId).addClass('critical-node');
+      //   });
+      // }
+      
+      // // Nodes with any flow passing through them
+      // const flowNodes = new Set();
+      // data.flowEdges.forEach(edge => {
+      //   flowNodes.add(edge.from);
+      //   flowNodes.add(edge.to);
+      // });
+      
+      // flowNodes.forEach(nodeId => {
+      //   if (!cy.getElementById(nodeId).hasClass('critical-node')) {
+      //     cy.getElementById(nodeId).addClass('flow-node');
+      //   }
+      // });
+
+      
     })
     .catch(err => {
-      alert("Error: " + err.message);
+     alert("Error: " + err.message);
       console.error(err);
-      document.body.removeChild(loadingMsg);
     });
+
+    loadAllCombinations(nodes, edges, source, sink);
+
 }
-
-
 
 
 
@@ -544,12 +563,99 @@ function updateNodeSelects() {
   }
 }
 
-// Initialize the dropdowns when the page loads
 document.addEventListener('DOMContentLoaded', function() {
-  // Wait a moment for the graph to be rendered
   setTimeout(updateNodeSelects, 500);
 });
 
+
+async function loadAllCombinations(nodes, edges, source, sink) {
+  try {
+    console.log("🔄 Chargement des combinaisons depuis l'API...");
+    
+    const response = await fetch('http://localhost:3000/all-combinations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nodes, edges, source, sink })
+    }).then(res => {
+        if (!res.ok) {
+          throw new Error(`Server responded with ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        allCombinationsData = data;
+        allCombinations = data.combinations || [];
+        if (allCombinationsData && allCombinationsData.combinations && allCombinationsData.combinations.length > 0) {
+          currentCombinationIndex = 0;
+          index = 0;
+        } else {
+          console.error("❌ Aucune combinaison trouvée dans les données");
+        }
+         console.log("✅ Données chargées:", allCombinationsData);
+         if (allCombinations.length > 0) {
+          renderFlotCompletGraph(currentFlotCompletIndex);
+          renderFlotMaxGraph(currentFlotMaxIndex);
+        }
+      })
+      .catch(err => {
+       // document.body.removeChild(loadingMsg);
+        alert("Error: " + err.message);
+        console.error(err);
+      });
+  
+    // Initialiser l'affichage
+    
+    
+  } catch (error) {
+    console.error("❌ Erreur lors du chargement des combinaisons:", error);
+  }
+}
+
+
+function renderFlotCompletGraph(index) {
+  const data = allCombinations[index];
+  document.getElementById('flot-complet-index').innerText = `${index + 1} / ${allCombinations.length}`;
+
+  // Reuse your existing graph rendering function
+  loadCompleteFlowGraph(data);
+}
+
+function renderFlotMaxGraph(index) {
+  const data = allCombinations[index];
+  document.getElementById('flot-max-index').innerText = `${index + 1} / ${allCombinations.length}`;
+
+  // Reuse your existing graph rendering function
+  loadMaxFlowGraph(data);
+}
+
+
+function previousFlotComplet() {
+  if (currentFlotCompletIndex > 0) {
+    currentFlotCompletIndex--;
+    renderFlotCompletGraph(currentFlotCompletIndex);
+  }
+}
+
+function nextFlotComplet() {
+  if (currentFlotCompletIndex < allCombinations.length - 1) {
+    currentFlotCompletIndex++;
+    renderFlotCompletGraph(currentFlotCompletIndex);
+  }
+}
+
+function previousFlotMax() {
+  if (currentFlotMaxIndex > 0) {
+    currentFlotMaxIndex--;
+    renderFlotMaxGraph(currentFlotMaxIndex);
+  }
+}
+
+function nextFlotMax() {
+  if (currentFlotMaxIndex < allCombinations.length - 1) {
+    currentFlotMaxIndex++;
+    renderFlotMaxGraph(currentFlotMaxIndex);
+  }
+}
 
 
 
