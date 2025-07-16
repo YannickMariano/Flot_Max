@@ -31,24 +31,35 @@ html, body {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
-  z-index: 999;
+  
   width: 80%;
-  max-width: 800px;
+  max-width: 1000px;
   margin-top: 100px; 
 }
 
 #original-graph-card {
   top: 100px;
+  background-color: #c5e1e1;
 }
 
 #flot-complet-graph-card {
   top: 620px;
   margin-bottom: 50px; 
+  background-color: #d7e4ff;
 }
 
 #flot-max-graph-card {
   top: 1140px;
-  margin-bottom: 50px; /* Adjust the top position for the modified graph card */
+  margin-bottom: 50px;
+  background-color: #ffd7d7; 
+}
+
+#tableau-section {
+  top: 1660px;
+ 
+  transform: translateX(-50%);
+  margin-bottom: 50px;
+  background-color: #fff1d7; 
 }
 
 #cy-original, #cy-flot-complet, #cy-flot-max {
@@ -56,6 +67,15 @@ html, body {
   width: 100%;
   background-color: #f8f8f8;
 }
+
+.section-wrapper {      
+      border-radius: 10px;
+      margin: 2px 0;
+    }
+    .bg-initial { background-color: #efefef; padding: 335px; }
+    .bg-flot-complet { background-color: #fff4e2; padding: 270px; }
+    .bg-flot-max { background-color: #ffe7e7; padding: 258px;}
+    .bg-tableau { background-color: #faffe9; padding: 480px;}
 
 #controls {
   position: absolute;

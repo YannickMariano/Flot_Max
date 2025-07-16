@@ -1,12 +1,3 @@
-const express = require('express');
-const cors = require('cors');
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-
 class FlotComplet {
     constructor() {
         this.capacites = new Map();
@@ -19,7 +10,6 @@ class FlotComplet {
         this.puits = null;
     }
 
-    // Initialiser le réseau à partir des données JSON
     initialiserReseau(donnees) {
         this.capacites.clear();
         this.flux.clear();
@@ -31,12 +21,10 @@ class FlotComplet {
         this.source = donnees.source;
         this.puits = donnees.sink;
 
-        // Ajouter les sommets
         donnees.nodes.forEach(node => {
             this.sommets.add(node.data.id);
         });
 
-        // Ajouter les arcs
         donnees.edges.forEach(edge => {
             const origine = edge.data.source;
             const destination = edge.data.target;
@@ -46,7 +34,6 @@ class FlotComplet {
         });
     }
 
-    // Ajouter un arc avec sa capacité
     ajouterArc(origine, destination, capacite) {
         const arc = `${origine}-${destination}`;
         this.capacites.set(arc, capacite);
@@ -55,13 +42,10 @@ class FlotComplet {
         this.arcs.push({origine, destination, arc});
     }
 
-    // Trouver un chemin simple passant par un arc donné
     trouverCheminSimple(arcChoisi) {
         const [origine, destination] = arcChoisi.split('-');
         
-        // Chemin de la source à l'origine de l'arc
         const cheminVersOrigine = this.bfs(this.source, origine);
-        // Chemin de la destination de l'arc vers le puits
         const cheminVersDestination = this.bfs(destination, this.puits);
         
         if (cheminVersOrigine && cheminVersDestination) {
@@ -70,7 +54,6 @@ class FlotComplet {
         return null;
     }
 
-    // Recherche en largeur (BFS) pour trouver un chemin
     bfs(debut, fin) {
         if (debut === fin) return [debut];
         
@@ -100,7 +83,6 @@ class FlotComplet {
         return null;
     }
 
-    // Vérifier si un chemin est élémentaire (sans circuit)
     estElementaire(chemin) {
         const sommetsVisites = new Set();
         for (const sommet of chemin) {
@@ -112,7 +94,6 @@ class FlotComplet {
         return true;
     }
 
-    // Mettre à jour les flux sur un chemin
     mettreAJourFlux(chemin, fluxAAjouter) {
         for (let i = 0; i < chemin.length - 1; i++) {
             const arc = `${chemin[i]}-${chemin[i + 1]}`;
@@ -123,7 +104,6 @@ class FlotComplet {
         }
     }
 
-    // Trouver l'arc de capacité résiduelle la plus faible
     trouverArcCapaciteMinimale() {
         let arcMin = null;
         let capaciteMin = Infinity;
@@ -138,13 +118,10 @@ class FlotComplet {
         return {arc: arcMin, capacite: capaciteMin};
     }
 
-    // Vérifier si le flot est complet
     estFlotComplet() {
-        // Un flot est complet si tout chemin de la source au puits contient au moins un arc saturé
         return this.bfs(this.source, this.puits) === null;
     }
 
-    // Enregistrer l'état actuel du réseau
     enregistrerEtat(numeroEtape, arcChoisi = null, chemin = null, action = null) {
         const arcsEtat = this.arcs.map(arc => ({
             arc: arc.arc,
@@ -170,7 +147,6 @@ class FlotComplet {
         return etat;
     }
 
-    // Calculer le flux total sortant de la source
     calculerFluxTotal() {
         let fluxTotal = 0;
         for (const arc of this.arcs) {
@@ -181,17 +157,14 @@ class FlotComplet {
         return fluxTotal;
     }
 
-    // Algorithme principal de Manuel Bloch
     algorithmeManuelBloch() {
         this.etapes = [];
         
-        // Initialisation
         this.enregistrerEtat(0, null, null, 'Initialisation - tous les flux à 0');
         
         let numeroEtape = 1;
         
         while (!this.estFlotComplet()) {
-            // Choisir l'arc de capacité résiduelle la plus faible
             const {arc: arcChoisi, capacite: capaciteMin} = this.trouverArcCapaciteMinimale();
             
             if (!arcChoisi) {
@@ -199,11 +172,9 @@ class FlotComplet {
                 break;
             }
             
-            // Trouver un chemin simple passant par cet arc
             const chemin = this.trouverCheminSimple(arcChoisi);
             
             if (!chemin) {
-                // Bloquer l'arc en le saturant
                 this.capacitesResiduelles.set(arcChoisi, 0);
                 this.enregistrerEtat(numeroEtape, arcChoisi, null, 'Arc bloqué - aucun chemin trouvé');
                 numeroEtape++;
@@ -211,18 +182,15 @@ class FlotComplet {
             }
             
             if (this.estElementaire(chemin)) {
-                // Chemin élémentaire - faire passer le flux
                 this.mettreAJourFlux(chemin, capaciteMin);
                 this.enregistrerEtat(numeroEtape, arcChoisi, chemin, `Flux de ${capaciteMin} ajouté sur le chemin`);
             } else {
-                // Chemin non élémentaire - bloquer l'arc de capacité la plus faible du circuit
                 this.capacitesResiduelles.set(arcChoisi, 0);
                 this.enregistrerEtat(numeroEtape, arcChoisi, chemin, 'Chemin non élémentaire - arc bloqué');
             }
             
             numeroEtape++;
             
-            // Sécurité pour éviter les boucles infinies
             if (numeroEtape > 1000) {
                 this.enregistrerEtat(numeroEtape, null, null, 'Arrêt de sécurité - trop d\'itérations');
                 break;
@@ -232,7 +200,7 @@ class FlotComplet {
         return {
             success: true,
             fluxTotal: this.calculerFluxTotal(),
-            nombreEtapes: this.etapes.length - 1, // -1 pour ne pas compter l'initialisation
+            nombreEtapes: this.etapes.length - 1,
             etapes: this.etapes,
             parametres: {
                 source: this.source,
@@ -244,10 +212,201 @@ class FlotComplet {
     }
 }
 
-// Démarrage du serveur
-app.listen(port, () => {
-    console.log(`🚀 API Flot Complet démarrée sur le port ${port}`);
-    console.log(`📖 Documentation: http://localhost:${port}/`);
-    console.log(`🧪 Test: http://localhost:${port}/test`);
-});
 
+
+
+
+
+
+
+let resultatsGlobaux = null;
+let etapeActuelle = 0;
+
+function calculerFlot() {
+    const donnees = document.getElementById('networkData').value;
+    const errorDiv = document.getElementById('error');
+    const resultsDiv = document.getElementById('results');
+    
+    try {
+        const donneesJSON = JSON.parse(donnees);
+        
+        if (!donneesJSON.source || !donneesJSON.sink || !donneesJSON.nodes || !donneesJSON.edges) {
+            throw new Error('Données invalides. Champs requis: source, sink, nodes, edges');
+        }
+        
+        const flot = new FlotComplet();
+        flot.initialiserReseau(donneesJSON);
+        const resultats = flot.algorithmeManuelBloch();
+        
+        if (resultats.success) {
+            resultatsGlobaux = resultats;
+            afficherResultats(resultats);
+            errorDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+        } else {
+            throw new Error(resultats.error || 'Erreur inconnue');
+        }
+        
+    } catch (error) {
+        errorDiv.textContent = 'Erreur: ' + error.message;
+        errorDiv.classList.remove('hidden');
+        resultsDiv.classList.add('hidden');
+    }
+}
+
+function afficherResultats(resultats) {
+    afficherResume(resultats);
+    creerNavigationEtapes(resultats.etapes);
+    afficherTableau(resultats.etapes[0]); // Afficher la première étape
+}
+
+function afficherResume(resultats) {
+    const summaryDiv = document.getElementById('summary');
+    
+    summaryDiv.innerHTML = `
+        <h3>📊 Résumé de l'algorithme</h3>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-value">${resultats.fluxTotal}</div>
+                <div class="summary-label">Flux total</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">${resultats.nombreEtapes}</div>
+                <div class="summary-label">Étapes</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">${resultats.parametres.nombreSommets}</div>
+                <div class="summary-label">Sommets</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">${resultats.parametres.nombreArcs}</div>
+                <div class="summary-label">Arcs</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">${resultats.parametres.source}</div>
+                <div class="summary-label">Source</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">${resultats.parametres.sink}</div>
+                <div class="summary-label">Puits</div>
+            </div>
+        </div>
+    `;
+}
+
+function creerNavigationEtapes(etapes) {
+    const navDiv = document.getElementById('stepNavigation');
+    navDiv.innerHTML = '';
+    
+    etapes.forEach((etape, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'step-btn';
+        btn.textContent = `Étape ${etape.etape}`;
+        btn.onclick = () => {
+            etapeActuelle = index;
+            afficherTableau(etape);
+            // Mettre à jour les boutons actifs
+            document.querySelectorAll('.step-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        };
+        
+        if (index === 0) btn.classList.add('active');
+        navDiv.appendChild(btn);
+    });
+}
+
+function afficherTableau(etape) {
+    const tableContainer = document.getElementById('tableContainer');
+
+    let html = `
+        <div class="etat-infos">
+            <p><strong>🔁 Arc choisi :</strong> ${etape.arcChoisi ? `<span class="arc-choisi">${etape.arcChoisi}</span>` : 'Aucun'}</p>
+            <p><strong>🛤️ Chemin :</strong> ${etape.chemin ? `<span class="chemin">${etape.chemin.join(' → ')}</span>` : 'Non trouvé'}</p>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th rowspan="2">Étape</th>
+                    <th rowspan="2">Action</th>
+                    <th colspan="${etape.arcs.length}">État des arcs</th>
+                    <th rowspan="2">Flux total</th>
+                    <th rowspan="2">Statut</th>
+                </tr>
+                <tr>`;
+
+    // En-têtes pour chaque arc
+    etape.arcs.forEach(arc => {
+        html += `<th>${arc.arc}<br><small>C: ${arc.capacite}</small></th>`;
+    });
+
+    html += `</tr></thead><tbody>`;
+
+    // Ligne de l'étape
+    html += `<tr>`;
+    html += `<td class="etape-cell">${etape.etape}</td>`;
+    html += `<td class="action-cell">${etape.action || '-'}</td>`;
+
+    // État de chaque arc
+    etape.arcs.forEach(arc => {
+        const classe = arc.estSature ? 'arc-sature' : 'arc-normal';
+        html += `<td class="${classe}">
+            <div class="flux-value">${arc.flux}</div>
+            <div class="capacite-value">(${arc.capaciteResiduelle})</div>
+        </td>`;
+    });
+
+    html += `<td class="flux-value">${etape.fluxTotal}</td>`;
+    html += `<td>${etape.estComplet ? '✅ Complet' : '⏳ En cours'}</td>`;
+    html += `</tr></tbody></table>`;
+
+    tableContainer.innerHTML = html;
+}
+
+
+function voirtableau() {
+    try {
+        const nodes = cy.nodes().map(n => ({ data: { id: n.id() } }));
+        const edges = cy.edges().map(e => ({
+            data: {
+                source: e.data('source'),
+                target: e.data('target'),
+                capacity: e.data('capacity')
+            }
+        }));
+
+        const source = document.getElementById('source-select').value;
+        const sink = document.getElementById('sink-select').value;
+
+        if (!source || !sink) {
+            alert("Veuillez sélectionner un sommet de début et un sommet de fin.");
+            return;
+        }
+
+        const donnees = {
+            source,
+            sink,
+            nodes,
+            edges
+        };
+
+        const flot = new FlotComplet();
+        flot.initialiserReseau(donnees);
+        const resultats = flot.algorithmeManuelBloch();
+
+        if (resultats.success) {
+            resultatsGlobaux = resultats;
+            afficherResultats(resultats);
+            document.getElementById('error').classList.add('hidden');
+            document.getElementById('results').classList.remove('hidden');
+        } else {
+            throw new Error("Erreur dans l’algorithme.");
+        }
+
+    } catch (error) {
+        const errorDiv = document.getElementById('error');
+        errorDiv.textContent = 'Erreur: ' + error.message;
+        errorDiv.classList.remove('hidden');
+        document.getElementById('results').classList.add('hidden');
+    }
+}

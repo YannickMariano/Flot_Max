@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithme de Manuel Bloch</title>
+    <link rel="stylesheet" href="css/tableau.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Algorithme de Manuel Bloch</h1>
+            <p>Recherche de flot complet dans un réseau de transport</p>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label for="networkData">Données du réseau (format JSON) :</label>
+                <textarea id="networkData" placeholder='Exemple:
+                    {
+                    "source": "A",
+                    "sink": "G",
+                    "nodes": [
+                        {"data": {"id": "A"}},
+                        {"data": {"id": "B"}},
+                        {"data": {"id": "C"}},
+                        {"data": {"id": "D"}},
+                        {"data": {"id": "E"}},
+                        {"data": {"id": "F"}},
+                        {"data": {"id": "G"}}
+                    ],
+                    "edges": [
+                        {"data": {"source": "A", "target": "B", "capacity": "45"}},
+                        {"data": {"source": "A", "target": "D", "capacity": "10"}},
+                        {"data": {"source": "A", "target": "E", "capacity": "15"}},
+                        {"data": {"source": "A", "target": "G", "capacity": "20"}},
+                        {"data": {"source": "B", "target": "D", "capacity": "20"}},
+                        {"data": {"source": "B", "target": "E", "capacity": "5"}},
+                        {"data": {"source": "B", "target": "F", "capacity": "15"}},
+                        {"data": {"source": "C", "target": "F", "capacity": "10"}},
+                        {"data": {"source": "C", "target": "G", "capacity": "15"}},
+                        {"data": {"source": "D", "target": "G", "capacity": "30"}},
+                        {"data": {"source": "E", "target": "G", "capacity": "10"}},
+                        {"data": {"source": "F", "target": "G", "capacity": "20"}}
+                    ]
+                    }'>
+                </textarea>
+            </div>
+            <button class="btn" onclick="calculerFlot()">📊 Calculer le flot complet</button>
+            <button class="btn" onclick="chargerExemple()">📝 Charger l'exemple</button>
+        </div>
+
+        <div id="results" class="results hidden">
+            <div id="summary" class="summary"></div>
+            <div id="stepNavigation" class="step-navigation"></div>
+            <div id="tableContainer" class="table-container"></div>
+        </div>
+
+        <div id="error" class="error hidden"></div>
+    </div>
+
+    <script src="js/tab.js"></script>
+</body>
+</html>
